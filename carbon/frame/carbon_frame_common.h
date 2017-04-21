@@ -1,7 +1,7 @@
-#ifndef AM_FRAME_COMMON_H
-#define AM_FRAME_COMMON_H
+#ifndef CARBON_FRAME_COMMON_H
+#define CARBON_FRAME_COMMON_H
 
-enum am_frame_ctl_byte {
+enum carbon_frame_ctl_byte {
     SOF_CHAR = 0xA3,            /* start-of-frame */
     EOF_CHAR = 0xA4,            /* end-of-frame */
     ESC_CHAR = 0x1B,            /* escape char */
@@ -11,4 +11,4 @@ enum am_frame_ctl_byte {
     ESC_ESC = 0x03,             /* ESC escape value */
 };
 
-#endif /* AM_FRAME_COMMON_H */
+#endif /* CARBON_FRAME_COMMON_H */
