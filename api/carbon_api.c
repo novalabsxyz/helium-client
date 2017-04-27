@@ -149,9 +149,12 @@ static enum carbon_api_status aa_rx(struct carbon_api_ctx * ctx, struct a_cmd_t 
             assert(caut_status_ok == c_dec_stat || caut_status_ok_busy == c_dec_stat);
 
             if (c_dec_stat != caut_status_ok_busy) {
-                /* If the cauterize reaches the end of input, flush
-                 * the RX out. Ignore the result of flush. */
-                (void)carbon_xfer_rx_flush(ctx->iface, &rx_ctx);
+                /* If cauterize stops being busy, it's time to get
+                 * out. If cauterize stopped on something other than
+                 * _ok, flush the RX. */
+                if (c_dec_stat != caut_status_ok) {
+                    (void)carbon_xfer_rx_flush(ctx->iface, &rx_ctx);
+                }
                 break;
             }
         } else if (gstat == carbon_xfer_rx_get_RESTART) {
