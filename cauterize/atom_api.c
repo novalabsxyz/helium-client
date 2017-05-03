@@ -6,25 +6,19 @@
 #define FSET(FS,IX) ((FS) & (1ull << (IX)))
 
 /* schema hash */
-hashtype_t const SCHEMA_HASH_atom_api = { 0xED,0x8B,0x5A,0x05,0xC8,0x0F,0x82,0x2F,0x47,0xE9,0x37,0xBA,0x0D,0xC3,0x0A,0x21,0x18,0x03,0x79,0x01 };
+hashtype_t const SCHEMA_HASH_atom_api = { 0xC3,0x52,0x10,0x8B,0x87,0x6C,0xD0,0x15,0xAD,0xEC,0x24,0x0A,0x41,0x50,0x77,0x8C,0xDC,0x7E,0x48,0xB2 };
 
 /* type encoders */
-R encode_res_send(EI * const _c_iter, struct res_send const * const _c_obj) {
-  caut_tag8_t _temp_tag = (caut_tag8_t)_c_obj->_tag;
+R encode_res_send(EI * const _c_iter, enum res_send const * const _c_obj) {
+  caut_tag8_t _c_tag;
 
-  if (_temp_tag >= UNION_NUM_FIELDS_res_send) {
-    return caut_status_invalid_tag;
+  if (ENUM_MAX_VAL_res_send < *_c_obj) {
+    return caut_status_enumeration_out_of_range;
   }
 
-  STATUS_CHECK(encode_tag8(_c_iter, &_temp_tag));
+  _c_tag = (caut_tag8_t)*_c_obj;
 
-  switch(_c_obj->_tag) {
-  case res_send_tag_ok: /* No data for field ok with index 0. */ break;
-  case res_send_tag_err_not_connected: /* No data for field err_not_connected with index 1. */ break;
-  case res_send_tag_err_dropped: /* No data for field err_dropped with index 2. */ break;
-  case res_send_tag_err_nack: /* No data for field err_nack with index 3. */ break;
-  case res_send_tag_err_channel_access: /* No data for field err_channel_access with index 4. */ break;
-  }
+  STATUS_CHECK(encode_tag8(_c_iter, &_c_tag));
 
   return caut_status_ok;
 }
@@ -53,8 +47,8 @@ R encode_res_connect(EI * const _c_iter, enum res_connect const * const _c_obj) 
   return caut_status_ok;
 }
 
-R encode_radio_frame(EI * const _c_iter, struct radio_frame const * const _c_obj) {
-  if (_c_obj->_length > VECTOR_MAX_LEN_radio_frame) {
+R encode_frame_app(EI * const _c_iter, struct frame_app const * const _c_obj) {
+  if (_c_obj->_length > VECTOR_MAX_LEN_frame_app) {
     return caut_status_invalid_length;
   }
 
@@ -79,7 +73,7 @@ R encode_res_poll(EI * const _c_iter, struct res_poll const * const _c_obj) {
   switch(_c_obj->_tag) {
   case res_poll_tag_none: /* No data for field none with index 0. */ break;
   case res_poll_tag_needs_reset: /* No data for field needs_reset with index 1. */ break;
-  case res_poll_tag_frame: STATUS_CHECK(encode_radio_frame(_c_iter, &_c_obj->frame)); break;
+  case res_poll_tag_frame: STATUS_CHECK(encode_frame_app(_c_iter, &_c_obj->frame)); break;
   }
 
   return caut_status_ok;
@@ -95,7 +89,7 @@ R encode_cmd_send(EI * const _c_iter, struct cmd_send const * const _c_obj) {
   STATUS_CHECK(encode_tag8(_c_iter, &_temp_tag));
 
   switch(_c_obj->_tag) {
-  case cmd_send_tag_req: STATUS_CHECK(encode_radio_frame(_c_iter, &_c_obj->req)); break;
+  case cmd_send_tag_req: STATUS_CHECK(encode_frame_app(_c_iter, &_c_obj->req)); break;
   case cmd_send_tag_res: STATUS_CHECK(encode_res_send(_c_iter, &_c_obj->res)); break;
   }
 
@@ -179,6 +173,7 @@ R encode_arr_u8_32(EI * const _c_iter, struct arr_u8_32 const * const _c_obj) {
 }
 
 R encode_connection(EI * const _c_iter, struct connection const * const _c_obj) {
+  STATUS_CHECK(encode_u32(_c_iter, &_c_obj->time));
   STATUS_CHECK(encode_u64(_c_iter, &_c_obj->long_addr));
   STATUS_CHECK(encode_u16(_c_iter, &_c_obj->pan_id));
   STATUS_CHECK(encode_u16(_c_iter, &_c_obj->short_addr));
@@ -195,13 +190,6 @@ R encode_connection(EI * const _c_iter, struct connection const * const _c_obj) 
   return caut_status_ok;
 }
 
-R encode_quick_connect(EI * const _c_iter, struct quick_connect const * const _c_obj) {
-  STATUS_CHECK(encode_u32(_c_iter, &_c_obj->time));
-  STATUS_CHECK(encode_connection(_c_iter, &_c_obj->connection));
-
-  return caut_status_ok;
-}
-
 R encode_req_connect(EI * const _c_iter, struct req_connect const * const _c_obj) {
   caut_tag8_t _temp_tag = (caut_tag8_t)_c_obj->_tag;
 
@@ -213,7 +201,7 @@ R encode_req_connect(EI * const _c_iter, struct req_connect const * const _c_obj
 
   switch(_c_obj->_tag) {
   case req_connect_tag_cold: /* No data for field cold with index 0. */ break;
-  case req_connect_tag_quick: STATUS_CHECK(encode_quick_connect(_c_iter, &_c_obj->quick)); break;
+  case req_connect_tag_quick: STATUS_CHECK(encode_connection(_c_iter, &_c_obj->quick)); break;
   }
 
   return caut_status_ok;
@@ -303,23 +291,15 @@ R encode_txn(EI * const _c_iter, struct txn const * const _c_obj) {
 
 
 /* type decoders */
-R decode_res_send(DI * const _c_iter, struct res_send * const _c_obj) {
-  caut_tag8_t _temp_tag;
-  STATUS_CHECK(decode_tag8(_c_iter, &_temp_tag));
+R decode_res_send(DI * const _c_iter, enum res_send * const _c_obj) {
+  caut_tag8_t _c_tag;
+  STATUS_CHECK(decode_tag8(_c_iter, &_c_tag));
 
-  if (_temp_tag >= UNION_NUM_FIELDS_res_send) {
-    return caut_status_invalid_tag;
-  } else {
-    _c_obj->_tag = (enum res_send_tag)_temp_tag;
+  if (ENUM_MAX_VAL_res_send < _c_tag) {
+    return caut_status_enumeration_out_of_range;
   }
 
-  switch(_c_obj->_tag) {
-  case res_send_tag_ok: /* No data for field i"ok" with index 0. */ break;
-  case res_send_tag_err_not_connected: /* No data for field i"err_not_connected" with index 1. */ break;
-  case res_send_tag_err_dropped: /* No data for field i"err_dropped" with index 2. */ break;
-  case res_send_tag_err_nack: /* No data for field i"err_nack" with index 3. */ break;
-  case res_send_tag_err_channel_access: /* No data for field i"err_channel_access" with index 4. */ break;
-  }
+  *_c_obj = (enum res_send)_c_tag;
 
   return caut_status_ok;
 }
@@ -347,10 +327,10 @@ R decode_res_connect(DI * const _c_iter, enum res_connect * const _c_obj) {
   return caut_status_ok;
 }
 
-R decode_radio_frame(DI * const _c_iter, struct radio_frame * const _c_obj) {
+R decode_frame_app(DI * const _c_iter, struct frame_app * const _c_obj) {
   STATUS_CHECK(decode_tag8(_c_iter, &_c_obj->_length));
 
-  if (_c_obj->_length > VECTOR_MAX_LEN_radio_frame) {
+  if (_c_obj->_length > VECTOR_MAX_LEN_frame_app) {
     return caut_status_invalid_length;
   }
 
@@ -374,7 +354,7 @@ R decode_res_poll(DI * const _c_iter, struct res_poll * const _c_obj) {
   switch(_c_obj->_tag) {
   case res_poll_tag_none: /* No data for field i"none" with index 0. */ break;
   case res_poll_tag_needs_reset: /* No data for field i"needs_reset" with index 1. */ break;
-  case res_poll_tag_frame: STATUS_CHECK(decode_radio_frame(_c_iter, &_c_obj->frame)); break;
+  case res_poll_tag_frame: STATUS_CHECK(decode_frame_app(_c_iter, &_c_obj->frame)); break;
   }
 
   return caut_status_ok;
@@ -391,7 +371,7 @@ R decode_cmd_send(DI * const _c_iter, struct cmd_send * const _c_obj) {
   }
 
   switch(_c_obj->_tag) {
-  case cmd_send_tag_req: STATUS_CHECK(decode_radio_frame(_c_iter, &_c_obj->req)); break;
+  case cmd_send_tag_req: STATUS_CHECK(decode_frame_app(_c_iter, &_c_obj->req)); break;
   case cmd_send_tag_res: STATUS_CHECK(decode_res_send(_c_iter, &_c_obj->res)); break;
   }
 
@@ -479,6 +459,7 @@ R decode_arr_u8_32(DI * const _c_iter, struct arr_u8_32 * const _c_obj) {
 }
 
 R decode_connection(DI * const _c_iter, struct connection * const _c_obj) {
+  STATUS_CHECK(decode_u32(_c_iter, &_c_obj->time));
   STATUS_CHECK(decode_u64(_c_iter, &_c_obj->long_addr));
   STATUS_CHECK(decode_u16(_c_iter, &_c_obj->pan_id));
   STATUS_CHECK(decode_u16(_c_iter, &_c_obj->short_addr));
@@ -495,13 +476,6 @@ R decode_connection(DI * const _c_iter, struct connection * const _c_obj) {
   return caut_status_ok;
 }
 
-R decode_quick_connect(DI * const _c_iter, struct quick_connect * const _c_obj) {
-  STATUS_CHECK(decode_u32(_c_iter, &_c_obj->time));
-  STATUS_CHECK(decode_connection(_c_iter, &_c_obj->connection));
-
-  return caut_status_ok;
-}
-
 R decode_req_connect(DI * const _c_iter, struct req_connect * const _c_obj) {
   caut_tag8_t _temp_tag;
   STATUS_CHECK(decode_tag8(_c_iter, &_temp_tag));
@@ -514,7 +488,7 @@ R decode_req_connect(DI * const _c_iter, struct req_connect * const _c_obj) {
 
   switch(_c_obj->_tag) {
   case req_connect_tag_cold: /* No data for field i"cold" with index 0. */ break;
-  case req_connect_tag_quick: STATUS_CHECK(decode_quick_connect(_c_iter, &_c_obj->quick)); break;
+  case req_connect_tag_quick: STATUS_CHECK(decode_connection(_c_iter, &_c_obj->quick)); break;
   }
 
   return caut_status_ok;
@@ -608,9 +582,8 @@ R decode_txn(DI * const _c_iter, struct txn * const _c_obj) {
 
 
 /* type initializers */
-void init_res_send(struct res_send * _c_obj) {
-  _c_obj->_tag = (caut_tag8_t) res_send_tag_ok;
-  /* No initializer for empty field ok */
+void init_res_send(enum res_send * _c_obj) {
+  *_c_obj = res_send_ok;
 }
 
 void init_res_info(struct res_info * _c_obj) {
@@ -625,7 +598,7 @@ void init_res_connect(enum res_connect * _c_obj) {
   *_c_obj = res_connect_ok;
 }
 
-void init_radio_frame(struct radio_frame * _c_obj) {
+void init_frame_app(struct frame_app * _c_obj) {
   _c_obj->_length = 0;
 }
 
@@ -636,7 +609,7 @@ void init_res_poll(struct res_poll * _c_obj) {
 
 void init_cmd_send(struct cmd_send * _c_obj) {
   _c_obj->_tag = (caut_tag8_t) cmd_send_tag_req;
-  init_radio_frame(&_c_obj->req);
+  init_frame_app(&_c_obj->req);
 }
 
 void init_cmd_poll(struct cmd_poll * _c_obj) {
@@ -666,6 +639,7 @@ void init_arr_u8_32(struct arr_u8_32 * _c_obj) {
 }
 
 void init_connection(struct connection * _c_obj) {
+  init_u32(&_c_obj->time);
   init_u64(&_c_obj->long_addr);
   init_u16(&_c_obj->pan_id);
   init_u16(&_c_obj->short_addr);
@@ -678,11 +652,6 @@ void init_connection(struct connection * _c_obj) {
   init_u8(&_c_obj->key_slot);
   init_arr_u8_32(&_c_obj->sess_key);
   init_u32(&_c_obj->fw_version);
-}
-
-void init_quick_connect(struct quick_connect * _c_obj) {
-  init_u32(&_c_obj->time);
-  init_connection(&_c_obj->connection);
 }
 
 void init_req_connect(struct req_connect * _c_obj) {
@@ -718,32 +687,8 @@ void init_txn(struct txn * _c_obj) {
 
 
 /* type comparators */
-enum caut_ord compare_res_send(struct res_send const * const _c_a, struct res_send const * const _c_b) {
-  enum caut_ord _c_o;
-
-  if (caut_ord_eq != (_c_o = CAUT_ORDER(_c_a->_tag, _c_b->_tag))) {
-    return _c_o;
-  }
-
-  switch(_c_a->_tag) {
-  case res_send_tag_ok:
-    _c_o = caut_ord_eq; /* No comparison for empty field ok */
-    break;
-  case res_send_tag_err_not_connected:
-    _c_o = caut_ord_eq; /* No comparison for empty field err_not_connected */
-    break;
-  case res_send_tag_err_dropped:
-    _c_o = caut_ord_eq; /* No comparison for empty field err_dropped */
-    break;
-  case res_send_tag_err_nack:
-    _c_o = caut_ord_eq; /* No comparison for empty field err_nack */
-    break;
-  case res_send_tag_err_channel_access:
-    _c_o = caut_ord_eq; /* No comparison for empty field err_channel_access */
-    break;
-  }
-
-  return _c_o;
+enum caut_ord compare_res_send(enum res_send const * const _c_a, enum res_send const * const _c_b) {
+  return CAUT_ORDER(*_c_a, *_c_b);
 }
 
 enum caut_ord compare_res_info(struct res_info const * const _c_a, struct res_info const * const _c_b) {
@@ -763,7 +708,7 @@ enum caut_ord compare_res_connect(enum res_connect const * const _c_a, enum res_
   return CAUT_ORDER(*_c_a, *_c_b);
 }
 
-enum caut_ord compare_radio_frame(struct radio_frame const * const _c_a, struct radio_frame const * const _c_b) {
+enum caut_ord compare_frame_app(struct frame_app const * const _c_a, struct frame_app const * const _c_b) {
   for (size_t _c_i = 0; _c_i < _c_a->_length && _c_i < _c_b->_length ; _c_i++) {
     const enum caut_ord _c_o = compare_u8(&_c_a->elems[_c_i], &_c_b->elems[_c_i]);
     if (caut_ord_eq != _c_o) {
@@ -789,7 +734,7 @@ enum caut_ord compare_res_poll(struct res_poll const * const _c_a, struct res_po
     _c_o = caut_ord_eq; /* No comparison for empty field needs_reset */
     break;
   case res_poll_tag_frame:
-    _c_o = compare_radio_frame(&_c_a->frame, &_c_b->frame);
+    _c_o = compare_frame_app(&_c_a->frame, &_c_b->frame);
     break;
   }
 
@@ -805,7 +750,7 @@ enum caut_ord compare_cmd_send(struct cmd_send const * const _c_a, struct cmd_se
 
   switch(_c_a->_tag) {
   case cmd_send_tag_req:
-    _c_o = compare_radio_frame(&_c_a->req, &_c_b->req);
+    _c_o = compare_frame_app(&_c_a->req, &_c_b->req);
     break;
   case cmd_send_tag_res:
     _c_o = compare_res_send(&_c_a->res, &_c_b->res);
@@ -905,6 +850,7 @@ enum caut_ord compare_arr_u8_32(struct arr_u8_32 const * const _c_a, struct arr_
 enum caut_ord compare_connection(struct connection const * const _c_a, struct connection const * const _c_b) {
   enum caut_ord _c_o;
 
+  if (caut_ord_eq != (_c_o = compare_u32(&_c_a->time, &_c_b->time))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u64(&_c_a->long_addr, &_c_b->long_addr))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u16(&_c_a->pan_id, &_c_b->pan_id))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u16(&_c_a->short_addr, &_c_b->short_addr))) { return _c_o; }
@@ -922,16 +868,6 @@ enum caut_ord compare_connection(struct connection const * const _c_a, struct co
 
 }
 
-enum caut_ord compare_quick_connect(struct quick_connect const * const _c_a, struct quick_connect const * const _c_b) {
-  enum caut_ord _c_o;
-
-  if (caut_ord_eq != (_c_o = compare_u32(&_c_a->time, &_c_b->time))) { return _c_o; }
-  if (caut_ord_eq != (_c_o = compare_connection(&_c_a->connection, &_c_b->connection))) { return _c_o; }
-
-  return caut_ord_eq;
-
-}
-
 enum caut_ord compare_req_connect(struct req_connect const * const _c_a, struct req_connect const * const _c_b) {
   enum caut_ord _c_o;
 
@@ -944,7 +880,7 @@ enum caut_ord compare_req_connect(struct req_connect const * const _c_a, struct 
     _c_o = caut_ord_eq; /* No comparison for empty field cold */
     break;
   case req_connect_tag_quick:
-    _c_o = compare_quick_connect(&_c_a->quick, &_c_b->quick);
+    _c_o = compare_connection(&_c_a->quick, &_c_b->quick);
     break;
   }
 

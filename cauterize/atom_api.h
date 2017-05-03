@@ -7,8 +7,8 @@
 #define NAME_atom_api "atom_api"
 #define VERSION_atom_api "1.0.0"
 #define MIN_SIZE_atom_api (1)
-#define MAX_SIZE_atom_api (113)
-#define NUM_TYPES_atom_api (19)
+#define MAX_SIZE_atom_api (109)
+#define NUM_TYPES_atom_api (18)
 
 /* schema hash */
 extern hashtype_t const SCHEMA_HASH_atom_api;
@@ -18,7 +18,7 @@ enum type_index_atom_api {
   type_index_atom_api_res_send = 0,
   type_index_atom_api_res_info = 1,
   type_index_atom_api_res_connect = 2,
-  type_index_atom_api_radio_frame = 3,
+  type_index_atom_api_frame_app = 3,
   type_index_atom_api_res_poll = 4,
   type_index_atom_api_cmd_send = 5,
   type_index_atom_api_cmd_poll = 6,
@@ -27,27 +27,22 @@ enum type_index_atom_api {
   type_index_atom_api_cmd_connected = 9,
   type_index_atom_api_arr_u8_32 = 10,
   type_index_atom_api_connection = 11,
-  type_index_atom_api_quick_connect = 12,
-  type_index_atom_api_req_connect = 13,
-  type_index_atom_api_cmd_connect = 14,
-  type_index_atom_api_res_sleep = 15,
-  type_index_atom_api_cmd_sleep = 16,
-  type_index_atom_api_cmd = 17,
-  type_index_atom_api_txn = 18,
+  type_index_atom_api_req_connect = 12,
+  type_index_atom_api_cmd_connect = 13,
+  type_index_atom_api_res_sleep = 14,
+  type_index_atom_api_cmd_sleep = 15,
+  type_index_atom_api_cmd = 16,
+  type_index_atom_api_txn = 17,
 };
 
 /* type definitions */
-#define UNION_NUM_FIELDS_res_send (0x5ull)
-struct res_send {
-  enum res_send_tag {
-    res_send_tag_ok = 0,
-    res_send_tag_err_not_connected = 1,
-    res_send_tag_err_dropped = 2,
-    res_send_tag_err_nack = 3,
-    res_send_tag_err_channel_access = 4,
-  } _tag;
-
-
+#define ENUM_MAX_VAL_res_send (res_send_err_channel_access)
+enum res_send {
+  res_send_ok = 0,
+  res_send_err_not_connected = 1,
+  res_send_err_dropped = 2,
+  res_send_err_nack = 3,
+  res_send_err_channel_access = 4,
 };
 
 struct res_info {
@@ -61,14 +56,13 @@ struct res_info {
 #define ENUM_MAX_VAL_res_connect (res_connect_err_fallback_to_slow_connect)
 enum res_connect {
   res_connect_ok = 0,
-  res_connect_err_not_autonomous = 1,
-  res_connect_err_fallback_to_slow_connect = 2,
+  res_connect_err_fallback_to_slow_connect = 1,
 };
 
-#define VECTOR_MAX_LEN_radio_frame (107)
-struct radio_frame {
+#define VECTOR_MAX_LEN_frame_app (103)
+struct frame_app {
   caut_tag8_t _length;
-  uint8_t elems[VECTOR_MAX_LEN_radio_frame];
+  uint8_t elems[VECTOR_MAX_LEN_frame_app];
 };
 
 #define UNION_NUM_FIELDS_res_poll (0x3ull)
@@ -83,7 +77,7 @@ struct res_poll {
   union {
     /* no data for field i"none" with index 0 */
     /* no data for field i"needs_reset" with index 1 */
-    struct radio_frame frame;
+    struct frame_app frame;
   };
 
 };
@@ -97,8 +91,8 @@ struct cmd_send {
 
 
   union {
-    struct radio_frame req;
-    struct res_send res;
+    struct frame_app req;
+    enum res_send res;
   };
 
 };
@@ -169,6 +163,7 @@ struct arr_u8_32 {
 };
 
 struct connection {
+  uint32_t time;
   uint64_t long_addr;
   uint16_t pan_id;
   uint16_t short_addr;
@@ -183,11 +178,6 @@ struct connection {
   uint32_t fw_version;
 };
 
-struct quick_connect {
-  uint32_t time;
-  struct connection connection;
-};
-
 #define UNION_NUM_FIELDS_req_connect (0x2ull)
 struct req_connect {
   enum req_connect_tag {
@@ -198,7 +188,7 @@ struct req_connect {
 
   union {
     /* no data for field i"cold" with index 0 */
-    struct quick_connect quick;
+    struct connection quick;
   };
 
 };
@@ -282,10 +272,10 @@ struct txn {
 
 
 /* function prototypes */
-enum caut_status encode_res_send(struct caut_encode_iter * const _c_iter, struct res_send const * const _c_obj);
-enum caut_status decode_res_send(struct caut_decode_iter * const _c_iter, struct res_send * const _c_obj);
-void init_res_send(struct res_send * _c_obj);
-enum caut_ord compare_res_send(struct res_send const * const _c_a, struct res_send const * const _c_b);
+enum caut_status encode_res_send(struct caut_encode_iter * const _c_iter, enum res_send const * const _c_obj);
+enum caut_status decode_res_send(struct caut_decode_iter * const _c_iter, enum res_send * const _c_obj);
+void init_res_send(enum res_send * _c_obj);
+enum caut_ord compare_res_send(enum res_send const * const _c_a, enum res_send const * const _c_b);
 
 enum caut_status encode_res_info(struct caut_encode_iter * const _c_iter, struct res_info const * const _c_obj);
 enum caut_status decode_res_info(struct caut_decode_iter * const _c_iter, struct res_info * const _c_obj);
@@ -297,10 +287,10 @@ enum caut_status decode_res_connect(struct caut_decode_iter * const _c_iter, enu
 void init_res_connect(enum res_connect * _c_obj);
 enum caut_ord compare_res_connect(enum res_connect const * const _c_a, enum res_connect const * const _c_b);
 
-enum caut_status encode_radio_frame(struct caut_encode_iter * const _c_iter, struct radio_frame const * const _c_obj);
-enum caut_status decode_radio_frame(struct caut_decode_iter * const _c_iter, struct radio_frame * const _c_obj);
-void init_radio_frame(struct radio_frame * _c_obj);
-enum caut_ord compare_radio_frame(struct radio_frame const * const _c_a, struct radio_frame const * const _c_b);
+enum caut_status encode_frame_app(struct caut_encode_iter * const _c_iter, struct frame_app const * const _c_obj);
+enum caut_status decode_frame_app(struct caut_decode_iter * const _c_iter, struct frame_app * const _c_obj);
+void init_frame_app(struct frame_app * _c_obj);
+enum caut_ord compare_frame_app(struct frame_app const * const _c_a, struct frame_app const * const _c_b);
 
 enum caut_status encode_res_poll(struct caut_encode_iter * const _c_iter, struct res_poll const * const _c_obj);
 enum caut_status decode_res_poll(struct caut_decode_iter * const _c_iter, struct res_poll * const _c_obj);
@@ -341,11 +331,6 @@ enum caut_status encode_connection(struct caut_encode_iter * const _c_iter, stru
 enum caut_status decode_connection(struct caut_decode_iter * const _c_iter, struct connection * const _c_obj);
 void init_connection(struct connection * _c_obj);
 enum caut_ord compare_connection(struct connection const * const _c_a, struct connection const * const _c_b);
-
-enum caut_status encode_quick_connect(struct caut_encode_iter * const _c_iter, struct quick_connect const * const _c_obj);
-enum caut_status decode_quick_connect(struct caut_decode_iter * const _c_iter, struct quick_connect * const _c_obj);
-void init_quick_connect(struct quick_connect * _c_obj);
-enum caut_ord compare_quick_connect(struct quick_connect const * const _c_a, struct quick_connect const * const _c_b);
 
 enum caut_status encode_req_connect(struct caut_encode_iter * const _c_iter, struct req_connect const * const _c_obj);
 enum caut_status decode_req_connect(struct caut_decode_iter * const _c_iter, struct req_connect * const _c_obj);

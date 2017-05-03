@@ -24,10 +24,10 @@ struct message_atom_api {
   enum type_index_atom_api _type;
 
   union {
-    struct res_send msg_res_send;
+    enum res_send msg_res_send;
     struct res_info msg_res_info;
     enum res_connect msg_res_connect;
-    struct radio_frame msg_radio_frame;
+    struct frame_app msg_frame_app;
     struct res_poll msg_res_poll;
     struct cmd_send msg_cmd_send;
     struct cmd_poll msg_cmd_poll;
@@ -36,7 +36,6 @@ struct message_atom_api {
     struct cmd_connected msg_cmd_connected;
     struct arr_u8_32 msg_arr_u8_32;
     struct connection msg_connection;
-    struct quick_connect msg_quick_connect;
     struct req_connect msg_req_connect;
     struct cmd_connect msg_cmd_connect;
     struct res_sleep msg_res_sleep;

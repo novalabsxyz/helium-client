@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+const size_t carbon_sleep_connection_size = sizeof(connection);
+
+
 #define ATOM_INFO_MESSAGE_SIZE (  \
     20 /* the hash */ +                         \
     4 /* the version */ +                       \
