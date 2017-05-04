@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "atom_api.h"
 
 enum carbon_info_status {
@@ -104,5 +109,9 @@ enum carbon_send_status carbon_send(struct carbon_ctx *ctx, void const *data, si
 enum carbon_poll_status carbon_poll(struct carbon_ctx * ctx,
                                     void * data, size_t len, size_t * used,
                                     uint32_t * drops);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* CARBON_H */
