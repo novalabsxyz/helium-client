@@ -41,7 +41,7 @@ enum res_send {
   res_send_ok = 0,
   res_send_err_not_connected = 1,
   res_send_err_dropped = 2,
-  res_send_err_nack = 3,
+  res_send_err_nacky = 3,
   res_send_err_channel_access = 4,
 };
 
@@ -231,13 +231,13 @@ struct res_sleep {
 struct cmd_sleep {
   enum cmd_sleep_tag {
     cmd_sleep_tag_req = 0,
-    cmd_sleep_tag_ress = 1,
+    cmd_sleep_tag_res = 1,
   } _tag;
 
 
   union {
     /* no data for field i"req" with index 0 */
-    struct res_sleep ress;
+    struct res_sleep res;
   };
 
 };

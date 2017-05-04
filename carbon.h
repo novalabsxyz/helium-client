@@ -3,12 +3,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "atom_api.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "atom_api.h"
 
 enum carbon_info_status {
     carbon_info_OK,
@@ -36,6 +35,7 @@ enum carbon_sleep_status {
     carbon_sleep_ERR_COMMUNICATION,
 };
 
+
 enum carbon_send_status {
     /* Send was ACKed by the bridge. */
     carbon_send_OK,
@@ -49,8 +49,6 @@ enum carbon_send_status {
 };
 
 static inline bool carbon_send_recoverable(enum carbon_send_status s) {
-    bool ret = false;
-
     switch (s) {
     case carbon_send_OK:
     case carbon_send_ERR_CHANNEL_ACCESS:
@@ -58,7 +56,17 @@ static inline bool carbon_send_recoverable(enum carbon_send_status s) {
         return true;
     default:
         return false;
+    }
 }
+
+struct carbon_ctx {
+    void *param;
+    /* The sequence number for Atom transactions. */
+    uint16_t txn_seq;
+    struct txn txn;
+    uint8_t buf[MAX_SIZE_atom_api];
+};
+
 
 enum carbon_poll_status {
     carbon_poll_OK_DATA,
@@ -70,19 +78,11 @@ enum carbon_poll_status {
 
 
 
-struct carbon_ctx {
-    /* The sequence number for Atom transactions. */
-    uint16_t txn_seq;
-    struct txn txn;
-    uint8_t buf[MAX_SIZE_atom_api];
-};
-
-
 #define CARBON_MAX_DATA_SIZE (VECTOR_MAX_LEN_frame_app)
 
 /* Called once at application startup. */
 void carbon_init(struct carbon_ctx * ctx);
-enum carbon_info_status carbon_info(struct carbon_ctx, *ctx, struct res_info *info);
+enum carbon_info_status carbon_info(struct carbon_ctx *ctx, struct res_info *info);
 enum carbon_connected_status carbon_connected(struct carbon_ctx *ctx);
 enum carbon_connect_status carbon_connect(struct carbon_ctx *ctx, struct connection *connection);
 enum carbon_sleep_status carbon_sleep(struct carbon_ctx *ctx, struct connection *connection);
@@ -109,6 +109,11 @@ enum carbon_send_status carbon_send(struct carbon_ctx *ctx, void const *data, si
 enum carbon_poll_status carbon_poll(struct carbon_ctx * ctx,
                                     void * data, size_t len, size_t * used,
                                     uint32_t * drops);
+
+
+extern size_t carbon_read(void *param, void *buf, size_t len);
+extern size_t carbon_write(void *param, void *buf, size_t len);
+extern void carbon_wait_ms(uint32_t ms);
 
 #ifdef __cplusplus
 }

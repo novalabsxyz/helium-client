@@ -6,7 +6,7 @@
 #define FSET(FS,IX) ((FS) & (1ull << (IX)))
 
 /* schema hash */
-hashtype_t const SCHEMA_HASH_atom_api = { 0xgC3,0x52,0x10,0x8B,0x87,0x6C,0xD0,0x15,0xAD,0xEC,0x24,0x0A,0x41,0x50,0x77,0x8C,0xDC,0x7E,0x48,0xB2 };
+hashtype_t const SCHEMA_HASH_atom_api = { 0x82,0x10,0x3A,0xC0,0x25,0xD0,0x46,0xDD,0xAE,0x98,0x07,0x64,0x26,0x9C,0xD2,0xEB,0xAE,0xC5,0x24,0x32 };
 
 /* type encoders */
 R encode_res_send(EI * const _c_iter, enum res_send const * const _c_obj) {
@@ -254,7 +254,7 @@ R encode_cmd_sleep(EI * const _c_iter, struct cmd_sleep const * const _c_obj) {
 
   switch(_c_obj->_tag) {
   case cmd_sleep_tag_req: /* No data for field req with index 0. */ break;
-  case cmd_sleep_tag_ress: STATUS_CHECK(encode_res_sleep(_c_iter, &_c_obj->ress)); break;
+  case cmd_sleep_tag_res: STATUS_CHECK(encode_res_sleep(_c_iter, &_c_obj->res)); break;
   }
 
   return caut_status_ok;
@@ -544,7 +544,7 @@ R decode_cmd_sleep(DI * const _c_iter, struct cmd_sleep * const _c_obj) {
 
   switch(_c_obj->_tag) {
   case cmd_sleep_tag_req: /* No data for field i"req" with index 0. */ break;
-  case cmd_sleep_tag_ress: STATUS_CHECK(decode_res_sleep(_c_iter, &_c_obj->ress)); break;
+  case cmd_sleep_tag_res: STATUS_CHECK(decode_res_sleep(_c_iter, &_c_obj->res)); break;
   }
 
   return caut_status_ok;
@@ -942,8 +942,8 @@ enum caut_ord compare_cmd_sleep(struct cmd_sleep const * const _c_a, struct cmd_
   case cmd_sleep_tag_req:
     _c_o = caut_ord_eq; /* No comparison for empty field req */
     break;
-  case cmd_sleep_tag_ress:
-    _c_o = compare_res_sleep(&_c_a->ress, &_c_b->ress);
+  case cmd_sleep_tag_res:
+    _c_o = compare_res_sleep(&_c_a->res, &_c_b->res);
     break;
   }
 
@@ -994,3 +994,4 @@ enum caut_ord compare_txn(struct txn const * const _c_a, struct txn const * cons
 
 #undef R
 #undef I
+
