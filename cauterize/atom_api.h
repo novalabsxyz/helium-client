@@ -41,7 +41,7 @@ enum res_send {
   res_send_ok = 0,
   res_send_err_not_connected = 1,
   res_send_err_dropped = 2,
-  res_send_err_nacky = 3,
+  res_send_err_nack = 3,
   res_send_err_channel_access = 4,
 };
 

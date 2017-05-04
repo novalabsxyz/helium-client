@@ -124,7 +124,7 @@ enum carbon_sleep_status carbon_sleep(struct carbon_ctx *ctx, struct connection 
         return carbon_sleep_ERR_COMMUNICATION;
     }
 
-    switch(ctx->txn.cmd.sleep.ress._tag) {
+    switch(ctx->txn.cmd.sleep.res._tag) {
     case res_sleep_tag_not_connected:
         return carbon_sleep_ERR_NOT_CONNECTED;
     case res_sleep_tag_keep_awake:
@@ -132,7 +132,7 @@ enum carbon_sleep_status carbon_sleep(struct carbon_ctx *ctx, struct connection 
     case res_sleep_tag_needs_reset:
         return carbon_sleep_ERR_NEEDS_RESET;
     case res_sleep_tag_connection:
-        *connection = ctx->txn.cmd.sleep.ress.connection;
+        *connection = ctx->txn.cmd.sleep.res.connection;
         return carbon_sleep_OK;
     }
     return carbon_sleep_ERR_COMMUNICATION;
