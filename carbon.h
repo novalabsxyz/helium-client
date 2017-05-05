@@ -65,6 +65,7 @@ struct carbon_ctx {
     uint16_t txn_seq;
     struct txn txn;
     uint8_t buf[MAX_SIZE_atom_api];
+    uint8_t ser_buf[2 * MAX_SIZE_atom_api]; // worst buffer size is all escaped characters
 };
 
 

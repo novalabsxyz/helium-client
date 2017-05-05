@@ -12,8 +12,122 @@ enum send_command_status {
     send_command_ERR_COMMUNICATION,
 };
 
+#define SOF_CHAR            (0xA3)  ///< Start-of-frame character.
+#define ESC_CHAR            (0x1B)  ///< Escape char for byte stuffing
+#define SOF_ESC             (0x01)  ///< SOF escape value
+#define EOF_ESC             (0x02)  ///< EOF escape value
+#define ESC_ESC             (0x03)  ///< ESC escape value
 
-enum send_command_status send_command(struct carbon_ctx *ctx) {
+enum decode_state {sof, len1, len2, payload};
+
+static inline size_t read_frame_getc(struct carbon_ctx *ctx, enum decode_state state,
+                                     uint8_t **payload_data, uint8_t *payload_end,
+                                     uint8_t *ch) {
+    if (state == payload) {
+        if (*payload_data >= payload_end) {
+            return 0;
+        }
+        *ch = *(*payload_data++);
+        return 1;
+    } else {
+        return carbon_read(ctx->param, &ch, 1);
+    }
+
+}
+
+static size_t read_frame(struct carbon_ctx *ctx, uint8_t *frame, size_t len) {
+    bool stuffed = false;
+    enum decode_state state = sof;
+    uint8_t ch = 0;
+    size_t payload_size = 0;
+    uint8_t *payload_location = ctx->ser_buf;
+    uint8_t *payload_end = payload_location;
+
+    while(read_frame_getc(ctx, state, &payload_location, payload_end, &ch) == 1) {
+        // Check for a stuffed char
+        if (ch == ESC_CHAR) {
+            // Un-stuff the next char
+            stuffed = true;
+            continue;
+        }
+        // Un-stuff the char if this is a stuffed char
+        if (stuffed) {
+            switch (ch) {
+            case SOF_ESC:
+                ch = SOF_CHAR;
+                break;
+            case ESC_ESC:
+                ch = ESC_CHAR;
+                break;
+            default:
+                // Very bad, wrong char, throw out everything
+                return 0;
+            }
+            stuffed = false;
+        }
+
+        // Now assemble frame according to state machine
+        switch (state) {
+        case sof:
+            // Waiting for SOF
+            if (ch == SOF_CHAR) {
+                state = len1;
+            }
+            break;
+        case len1:
+            // Length low byte
+            payload_size = ch;
+            state = len2;
+            break;
+        case len2: {
+            // Length high byte, ready for payload
+            payload_size += ch << 8;
+            payload_end = ctx->ser_buf + payload_size;
+            size_t payload_read = carbon_read(ctx->param, ctx->ser_buf, payload_size);
+            if (payload_read != payload_size) {
+                return 0;
+            }
+            state = payload;
+        } break;
+        case payload:
+            *frame++ = ch;
+            break;
+        default:
+            break;
+        }
+    }
+    return 0;
+}
+
+static size_t write_frame(struct carbon_ctx *ctx, uint8_t *frame, size_t len) {
+    if (len == 0) {
+        return 0;
+    }
+
+    uint8_t *out = ctx->ser_buf;
+    *out++ = SOF_CHAR;
+    *out++ = len & 0xff;
+    *out++ = len >> 8;
+    while(len--) {
+        uint8_t in = *frame++;
+        switch(in) {
+        case SOF_CHAR:
+            *out++ = ESC_CHAR;
+            *out++ = SOF_ESC;
+            break;
+        case ESC_CHAR:
+            *out++ = ESC_CHAR;
+            *out++ = ESC_ESC;
+            break;
+        default:
+            *out++ = in;
+        }
+    }
+    return carbon_write(ctx->param, ctx->ser_buf, out - ctx->ser_buf - 1);
+}
+
+
+static enum send_command_status send_command(struct carbon_ctx *ctx) {
     uint16_t seq = ctx->txn_seq++;
 
     ctx->txn.seq = seq;
@@ -24,12 +138,12 @@ enum send_command_status send_command(struct carbon_ctx *ctx) {
         return send_command_ERR_ENCODE;;
     }
 
-    size_t len = carbon_write(ctx->param, ctx->buf, ei.position);
+    size_t len = write_frame(ctx->param, ctx->buf, ei.position);
     if (len != ei.position) {
         return send_command_ERR_COMMUNICATION;
     }
 
-    len = carbon_read(ctx->param, ctx->buf, sizeof(ctx->buf));
+    len = read_frame(ctx->param, ctx->buf, sizeof(ctx->buf));
     struct caut_decode_iter di;
     caut_decode_iter_init(&di, ctx->buf, len);
     if (caut_status_ok != decode_txn(&di, &ctx->txn)) {
