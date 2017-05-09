@@ -65,7 +65,7 @@ struct carbon_ctx {
     uint16_t txn_seq;
     struct txn txn;
     uint8_t buf[MAX_SIZE_atom_api];
-    uint8_t ser_buf[2 * MAX_SIZE_atom_api]; // worst buffer size is all escaped characters
+    uint8_t ser_buf[4 + MAX_SIZE_atom_api];
 };
 
 
@@ -82,7 +82,7 @@ enum carbon_poll_status {
 #define CARBON_MAX_DATA_SIZE (VECTOR_MAX_LEN_frame_app)
 
 /* Called once at application startup. */
-void carbon_init(struct carbon_ctx * ctx);
+void carbon_init(struct carbon_ctx * ctx, void *param);
 enum carbon_info_status carbon_info(struct carbon_ctx *ctx, struct res_info *info);
 enum carbon_connected_status carbon_connected(struct carbon_ctx *ctx);
 enum carbon_connect_status carbon_connect(struct carbon_ctx *ctx, struct connection *connection);
@@ -112,9 +112,10 @@ enum carbon_poll_status carbon_poll(struct carbon_ctx * ctx,
                                     uint32_t * drops);
 
 
-extern size_t carbon_read(void *param, void *buf, size_t len);
-extern size_t carbon_write(void *param, void *buf, size_t len);
-extern void carbon_wait_ms(uint32_t ms);
+extern bool carbon_serial_readable(void *param);
+extern bool carbon_serial_getc(void *param, uint8_t *ch);
+extern bool carbon_serial_putc(void *param, uint8_t ch);
+extern void carbon_wait_ms(void *param, uint32_t ms);
 
 #ifdef __cplusplus
 }

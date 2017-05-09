@@ -13,6 +13,7 @@
 *.a
 *.la
 *.lo
+*.dat
 
 # Shared objects (inc. Windows DLLs)
 *.dll

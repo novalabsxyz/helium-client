@@ -12,118 +12,108 @@ enum send_command_status {
     send_command_ERR_COMMUNICATION,
 };
 
-#define SOF_CHAR            (0xA3)  ///< Start-of-frame character.
-#define ESC_CHAR            (0x1B)  ///< Escape char for byte stuffing
-#define SOF_ESC             (0x01)  ///< SOF escape value
-#define EOF_ESC             (0x02)  ///< EOF escape value
-#define ESC_ESC             (0x03)  ///< ESC escape value
+#define SOF_CHAR            (0x7E)  ///< Start-of-frame character.
 
-enum decode_state {sof, len1, len2, payload};
+enum decode_state {sof, len_msb, len_lsb, payload, checksum};
 
-static inline size_t read_frame_getc(struct carbon_ctx *ctx, enum decode_state state,
-                                     uint8_t **payload_data, uint8_t *payload_end,
-                                     uint8_t *ch) {
-    if (state == payload) {
-        if (*payload_data >= payload_end) {
-            return 0;
+
+#define SERIAL_WAIT_TIMEOUT 1000
+static inline bool _wait_for_byte(struct carbon_ctx *ctx, size_t timeout) {
+    while (timeout--) {
+        if (carbon_serial_readable(ctx->param)) {
+            return true;
+        } else {
+            carbon_wait_ms(ctx->param, 1);
         }
-        *ch = *(*payload_data++);
-        return 1;
-    } else {
-        return carbon_read(ctx->param, &ch, 1);
     }
-
+    printf("TIMEOUT\n");
+    return false;
 }
 
-static size_t read_frame(struct carbon_ctx *ctx, uint8_t *frame, size_t len) {
-    bool stuffed = false;
+static size_t _read_frame(struct carbon_ctx *ctx, uint8_t *frame, size_t len) {
     enum decode_state state = sof;
-    uint8_t ch = 0;
     size_t payload_size = 0;
-    uint8_t *payload_location = ctx->ser_buf;
-    uint8_t *payload_end = payload_location;
+    uint8_t payload_checksum = 0;
 
-    while(read_frame_getc(ctx, state, &payload_location, payload_end, &ch) == 1) {
-        // Check for a stuffed char
-        if (ch == ESC_CHAR) {
-            // Un-stuff the next char
-            stuffed = true;
-            continue;
-        }
-        // Un-stuff the char if this is a stuffed char
-        if (stuffed) {
-            switch (ch) {
-            case SOF_ESC:
-                ch = SOF_CHAR;
-                break;
-            case ESC_ESC:
-                ch = ESC_CHAR;
-                break;
-            default:
-                // Very bad, wrong char, throw out everything
-                return 0;
-            }
-            stuffed = false;
+    while(_wait_for_byte(ctx, SERIAL_WAIT_TIMEOUT)) {
+        uint8_t ch;
+        if (!carbon_serial_getc(ctx->param, &ch)) {
+            // Error reading
+            return -3;
         }
 
-        // Now assemble frame according to state machine
         switch (state) {
         case sof:
             // Waiting for SOF
             if (ch == SOF_CHAR) {
-                state = len1;
+                state = len_msb;
             }
             break;
-        case len1:
+        case len_msb:
+            // Length high byte
+            payload_size = ch << 8;
+            state = len_lsb;
+            break;
+        case len_lsb: {
             // Length low byte
-            payload_size = ch;
-            state = len2;
-            break;
-        case len2: {
-            // Length high byte, ready for payload
-            payload_size += ch << 8;
-            payload_end = ctx->ser_buf + payload_size;
-            size_t payload_read = carbon_read(ctx->param, ctx->ser_buf, payload_size);
-            if (payload_read != payload_size) {
-                return 0;
+            payload_size += ch;
+            // Overflow error
+            if (payload_size > len) {
+                return -1;
             }
+            len = payload_size;
             state = payload;
         } break;
         case payload:
             *frame++ = ch;
+            payload_checksum += ch;
+            if (--len == 0) {
+                payload_checksum = 0xFF - payload_checksum;
+                state = checksum;
+            }
             break;
+        case checksum:
+            if (ch == payload_checksum) {
+                return payload_size;
+            } else {
+                // Checksum error
+                return -2;
+            }
         default:
             break;
         }
     }
+    // Timeout error
     return 0;
 }
 
-static size_t write_frame(struct carbon_ctx *ctx, uint8_t *frame, size_t len) {
+static size_t _write_frame(struct carbon_ctx *ctx, uint8_t *frame, size_t len) {
     if (len == 0) {
         return 0;
     }
 
-    uint8_t *out = ctx->ser_buf;
-    *out++ = SOF_CHAR;
-    *out++ = len & 0xff;
-    *out++ = len >> 8;
-    while(len--) {
-        uint8_t in = *frame++;
-        switch(in) {
-        case SOF_CHAR:
-            *out++ = ESC_CHAR;
-            *out++ = SOF_ESC;
-            break;
-        case ESC_CHAR:
-            *out++ = ESC_CHAR;
-            *out++ = ESC_ESC;
-            break;
-        default:
-            *out++ = in;
-        }
+    size_t written = 0;
+#define CHECK_WRITE(ch, inc) \
+    if (!carbon_serial_putc(ctx->param, (ch))) {    \
+        return -1; \
+    } else { \
+        written += (inc);                          \
     }
-    return carbon_write(ctx->param, ctx->ser_buf, out - ctx->ser_buf - 1);
+
+    CHECK_WRITE(SOF_CHAR, 0);
+    CHECK_WRITE(len >> 8, 0);
+    CHECK_WRITE(len & 0xFF, 0);
+
+    uint8_t checksum = 0;
+    while(len--) {
+        int8_t ch = *frame++;
+        CHECK_WRITE(ch, 1);
+        checksum += ch;
+    }
+    checksum = 0xFF - checksum;
+    CHECK_WRITE(checksum, 0);
+
+    return written;
 }
 
 
@@ -135,15 +125,19 @@ static enum send_command_status send_command(struct carbon_ctx *ctx) {
     struct caut_encode_iter ei;
     caut_encode_iter_init(&ei, ctx->buf, sizeof(ctx->buf));
     if (caut_status_ok != encode_txn(&ei, &ctx->txn)) {
-        return send_command_ERR_ENCODE;;
+        return send_command_ERR_ENCODE;
     }
 
-    size_t len = write_frame(ctx->param, ctx->buf, ei.position);
+    size_t len = _write_frame(ctx, ctx->buf, ei.position);
     if (len != ei.position) {
         return send_command_ERR_COMMUNICATION;
     }
 
-    len = read_frame(ctx->param, ctx->buf, sizeof(ctx->buf));
+    len = _read_frame(ctx, ctx->buf, sizeof(ctx->buf));
+    if (len <= 0) {
+        return send_command_ERR_COMMUNICATION;
+    }
+
     struct caut_decode_iter di;
     caut_decode_iter_init(&di, ctx->buf, len);
     if (caut_status_ok != decode_txn(&di, &ctx->txn)) {
@@ -153,13 +147,12 @@ static enum send_command_status send_command(struct carbon_ctx *ctx) {
     return send_command_OK;
 }
 
-void carbon_init(struct carbon_ctx * ctx) {
+void carbon_init(struct carbon_ctx * ctx, void *param) {
     assert(ctx);
-    *ctx = (struct carbon_ctx) {
-        .txn_seq = 0,
-        .txn = {0},
-        .buf = {0},
-    };
+    memset(ctx, 0, sizeof(*ctx));
+    if (NULL != param) {
+        ctx->param = param;
+    }
 }
 
 enum carbon_info_status carbon_info(struct carbon_ctx *ctx, struct res_info *info) {
@@ -167,7 +160,7 @@ enum carbon_info_status carbon_info(struct carbon_ctx *ctx, struct res_info *inf
 
     enum send_command_status status = send_command(ctx);
     if (send_command_OK != status) {
-        return carbon_send_ERR_COMMUNICATION;
+        return carbon_info_ERR_COMMUNICATION;
     }
 
     *info = ctx->txn.cmd.info.res;
@@ -183,7 +176,7 @@ enum carbon_connected_status carbon_connected(struct carbon_ctx * ctx) {
     }
 
     if (!ctx->txn.cmd.connected.res) {
-        return carbon_connect_NOT_CONNECTED;
+        return carbon_connected_NOT_CONNECTED;
     }
     return carbon_connected_CONNECTED;
 }
@@ -212,7 +205,7 @@ enum carbon_connect_status carbon_connect(struct carbon_ctx * ctx, struct connec
         if (carbon_connected_CONNECTED == connected_status) {
             break;
         } else if (carbon_connected_NOT_CONNECTED == connected_status) {
-            carbon_wait_ms(wait_ms);
+            carbon_wait_ms(ctx->param, wait_ms);
         } else if (carbon_connected_ERR_COMMUNICATION == connected_status) {
             return carbon_connect_ERR_COMMUNICATION;
         } else {
@@ -301,7 +294,7 @@ enum carbon_poll_status carbon_poll(struct carbon_ctx * ctx,
 
     enum send_command_status status = send_command(ctx);
     if (send_command_OK != status) {
-        return carbon_send_ERR_COMMUNICATION;
+        return carbon_poll_ERR_COMMUNICATION;
     }
 
     if (drops) {
