@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "atom_api.h"
+#include "cauterize/atom_api.h"
 
 #ifdef __cplusplus
 extern "C" {
