@@ -24,7 +24,7 @@ int cli_info(struct carbon_ctx *ctx, struct options *options) {
         return -1;
     }
 
-    printf("MAC:     %llx\n", info.mac);
+    printf("MAC:     %" PRIx64 "\n", info.mac);
     printf("Uptime:  %d\n", info.uptime);
     printf("Time:    %d\n", info.time);
     printf("Version: %x\n", info.fw_version);
