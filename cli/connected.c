@@ -10,6 +10,8 @@ static inline const char *str_connected_status(enum carbon_connected_status stat
     case carbon_connected_ERR_COMMUNICATION:
         return "Error communicating with Atom";
     }
+
+    return NULL;
 }
 
 int cli_connected(struct carbon_ctx *ctx, struct options *options) {

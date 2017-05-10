@@ -2,7 +2,7 @@ PROJECT=carbon
 PROJECT_CLI=atom
 WARN = -Wall -Wextra -pedantic
 
-CFLAGS = -g ${WARN} -std=c11 -I. -I./cauterize
+CFLAGS = -g ${WARN} -std=c11 -I. -I./cauterize -D_BSD_SOURCE
 
 OBJS = carbon.o \
 	cauterize/atom_api.o \

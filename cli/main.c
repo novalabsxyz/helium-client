@@ -11,7 +11,7 @@
 
 bool carbon_serial_readable(void *param) {
     struct pollfd pollfd = {
-        .fd = (int)param,
+        .fd = (int)(intptr_t)param,
         .events = POLLIN,
     };
     if (poll(&pollfd, 1, -1) == 1) {
@@ -21,11 +21,11 @@ bool carbon_serial_readable(void *param) {
 }
 
 bool carbon_serial_getc(void *param, uint8_t *ch) {
-    return read((int)param, ch, 1) > 0;
+    return read((int)(intptr_t)param, ch, 1) > 0;
 }
 
 bool carbon_serial_putc(void *param, uint8_t ch) {
-    return write((int)param, &ch, 1) == 1;
+    return write((int)(intptr_t)param, &ch, 1) == 1;
 }
 
 void carbon_wait_ms(void *param, uint32_t ms) {

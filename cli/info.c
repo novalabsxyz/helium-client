@@ -9,6 +9,8 @@ static inline const char *str_info_status(enum carbon_info_status status) {
     case carbon_info_ERR_COMMUNICATION:
         return "Error communicating with Atom";
     }
+
+    return NULL;
 }
 
 int cli_info(struct carbon_ctx *ctx, struct options *options) {

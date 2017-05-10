@@ -18,6 +18,8 @@ const char *str_sleep_status(enum carbon_sleep_status status) {
     case carbon_sleep_ERR_COMMUNICATION:
         return "Error communicating with Atom";
     }
+
+    return NULL;
 }
 
 int cli_sleep(struct carbon_ctx *ctx, struct options *options) {

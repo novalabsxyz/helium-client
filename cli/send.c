@@ -20,6 +20,8 @@ static inline const char *str_send_status(enum carbon_send_status status) {
     case carbon_send_ERR_COMMUNICATION:
         return "Error communicating with Atom";
     }
+
+    return NULL;
 }
 
 int cli_send(struct carbon_ctx *ctx, struct options *options) {
@@ -41,8 +43,8 @@ int cli_send(struct carbon_ctx *ctx, struct options *options) {
     }
 
     if (stat.st_size > CARBON_MAX_DATA_SIZE) {
-        printf("File size %lld is too big to be sent (max: %d)",
-               stat.st_size, CARBON_MAX_DATA_SIZE);
+        printf("File size %d is too big to be sent (max: %d)",
+               (int)stat.st_size, CARBON_MAX_DATA_SIZE);
         return -1;
     }
 
