@@ -26,7 +26,6 @@ static inline bool _wait_for_byte(struct carbon_ctx *ctx, size_t timeout) {
             carbon_wait_ms(ctx->param, 1);
         }
     }
-    printf("TIMEOUT\n");
     return false;
 }
 
