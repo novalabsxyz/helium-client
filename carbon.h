@@ -115,7 +115,7 @@ enum carbon_poll_status carbon_poll(struct carbon_ctx * ctx,
 extern bool carbon_serial_readable(void *param);
 extern bool carbon_serial_getc(void *param, uint8_t *ch);
 extern bool carbon_serial_putc(void *param, uint8_t ch);
-extern void carbon_wait_ms(void *param, uint32_t ms);
+extern void carbon_wait_us(void *param, uint32_t us);
 
 #ifdef __cplusplus
 }

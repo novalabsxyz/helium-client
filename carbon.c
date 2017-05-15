@@ -17,13 +17,14 @@ enum send_command_status {
 enum decode_state {sof, len_msb, len_lsb, payload, checksum};
 
 
-#define SERIAL_WAIT_TIMEOUT 1000
+// 1 second timeout
+#define SERIAL_WAIT_TIMEOUT 2000
 static inline bool _wait_for_byte(struct carbon_ctx *ctx, size_t timeout) {
     while (timeout--) {
         if (carbon_serial_readable(ctx->param)) {
             return true;
         } else {
-            carbon_wait_ms(ctx->param, 1);
+            carbon_wait_us(ctx->param, 500);
         }
     }
     return false;
@@ -83,6 +84,7 @@ static size_t _read_frame(struct carbon_ctx *ctx, uint8_t *frame, size_t len) {
         }
     }
     // Timeout error
+    printf("TIMEOUT %d\n", payload_size);
     return 0;
 }
 
@@ -197,14 +199,14 @@ enum carbon_connect_status carbon_connect(struct carbon_ctx * ctx, struct connec
         return carbon_connect_ERR_COMMUNICATION;
     }
 
-    const uint8_t wait_ms = 250;
-    uint32_t wait_cycles = (1000 / wait_ms) * 60; // 60 seconds
+    const uint32_t wait_us = 2500;
+    uint32_t wait_cycles = (100000 / wait_us) * 60; // 60 seconds
     while (--wait_cycles) {
         enum carbon_connected_status connected_status = carbon_connected(ctx);
         if (carbon_connected_CONNECTED == connected_status) {
             break;
         } else if (carbon_connected_NOT_CONNECTED == connected_status) {
-            carbon_wait_ms(ctx->param, wait_ms);
+            carbon_wait_us(ctx->param, wait_us);
         } else if (carbon_connected_ERR_COMMUNICATION == connected_status) {
             return carbon_connect_ERR_COMMUNICATION;
         } else {
