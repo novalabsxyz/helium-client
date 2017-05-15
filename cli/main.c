@@ -28,9 +28,9 @@ bool carbon_serial_putc(void *param, uint8_t ch) {
     return write((int)(intptr_t)param, &ch, 1) == 1;
 }
 
-void carbon_wait_ms(void *param, uint32_t ms) {
+void carbon_wait_us(void *param, uint32_t us) {
     (void)param;
-    usleep(ms * 1000);
+    usleep(us);
 }
 
 

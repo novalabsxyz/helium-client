@@ -23,4 +23,4 @@ matrix:
 before_install:
   - export CC=$COMPILER;
 
-script: make atom
+script: make carbon

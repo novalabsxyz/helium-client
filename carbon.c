@@ -84,7 +84,6 @@ static size_t _read_frame(struct carbon_ctx *ctx, uint8_t *frame, size_t len) {
         }
     }
     // Timeout error
-    printf("TIMEOUT %d\n", payload_size);
     return 0;
 }
 

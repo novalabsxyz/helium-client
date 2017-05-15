@@ -1,5 +1,4 @@
 PROJECT=carbon
-PROJECT_CLI=atom
 WARN = -Wall -Wextra -pedantic
 
 CFLAGS = -g ${WARN} -std=c11 -I. -I./cauterize -D_BSD_SOURCE
@@ -20,8 +19,8 @@ all: lib${PROJECT}.a
 lib${PROJECT}.a: ${OBJS}
 	ar -rcs $@ ${OBJS}
 
-${PROJECT_CLI}: ${OBJS_CLI} lib${PROJECT}.a cli/main.c
+${PROJECT}: ${OBJS_CLI} lib${PROJECT}.a cli/main.c
 	${CC} -o $@ cli/main.c ${CFLAGS} ${OBJS_CLI} ${LDFLAGS} lib${PROJECT}.a
 
 clean:
-	rm -f ${OBJS} ${OBJS_CLI} ${PROJECT_CLI} *.a *.core
+	rm -f ${OBJS} ${OBJS_CLI} ${PROJECT} *.a *.core
