@@ -6,7 +6,7 @@
 #define FSET(FS,IX) ((FS) & (1ull << (IX)))
 
 /* schema hash */
-hashtype_t const SCHEMA_HASH_atom_api = { 0x9E,0x71,0x3F,0x4A,0xC9,0x51,0x3A,0xF4,0xB3,0x2B,0x6B,0x29,0x33,0x77,0xE6,0xC8,0xB2,0x83,0x80,0x7C };
+hashtype_t const SCHEMA_HASH_atom_api = { 0x8A,0xD8,0x93,0x3C,0x3F,0x4F,0x01,0x0D,0x11,0x10,0x70,0x26,0xE0,0xB9,0x7B,0x6C,0x7E,0x3C,0x44,0x8A };
 
 /* type encoders */
 R encode_res_send(EI * const _c_iter, enum res_send const * const _c_obj) {
@@ -61,20 +61,26 @@ R encode_frame_app(EI * const _c_iter, struct frame_app const * const _c_obj) {
   return caut_status_ok;
 }
 
-R encode_res_poll(EI * const _c_iter, struct res_poll const * const _c_obj) {
+R encode_poll_frame(EI * const _c_iter, struct poll_frame const * const _c_obj) {
   caut_tag8_t _temp_tag = (caut_tag8_t)_c_obj->_tag;
 
-  if (_temp_tag >= UNION_NUM_FIELDS_res_poll) {
+  if (_temp_tag >= UNION_NUM_FIELDS_poll_frame) {
     return caut_status_invalid_tag;
   }
 
   STATUS_CHECK(encode_tag8(_c_iter, &_temp_tag));
 
   switch(_c_obj->_tag) {
-  case res_poll_tag_none: /* No data for field none with index 0. */ break;
-  case res_poll_tag_needs_reset: /* No data for field needs_reset with index 1. */ break;
-  case res_poll_tag_frame: STATUS_CHECK(encode_frame_app(_c_iter, &_c_obj->frame)); break;
+  case poll_frame_tag_none: /* No data for field none with index 0. */ break;
+  case poll_frame_tag_frame: STATUS_CHECK(encode_frame_app(_c_iter, &_c_obj->frame)); break;
   }
+
+  return caut_status_ok;
+}
+
+R encode_res_poll(EI * const _c_iter, struct res_poll const * const _c_obj) {
+  STATUS_CHECK(encode_bool(_c_iter, &_c_obj->needs_reset));
+  STATUS_CHECK(encode_poll_frame(_c_iter, &_c_obj->frame));
 
   return caut_status_ok;
 }
@@ -173,19 +179,19 @@ R encode_arr_u8_32(EI * const _c_iter, struct arr_u8_32 const * const _c_obj) {
 }
 
 R encode_connection(EI * const _c_iter, struct connection const * const _c_obj) {
-  STATUS_CHECK(encode_u32(_c_iter, &_c_obj->time));
   STATUS_CHECK(encode_u64(_c_iter, &_c_obj->long_addr));
+  STATUS_CHECK(encode_u32(_c_iter, &_c_obj->fw_version));
+  STATUS_CHECK(encode_u32(_c_iter, &_c_obj->time));
   STATUS_CHECK(encode_u16(_c_iter, &_c_obj->pan_id));
   STATUS_CHECK(encode_u16(_c_iter, &_c_obj->short_addr));
   STATUS_CHECK(encode_u16(_c_iter, &_c_obj->gateway_addr));
+  STATUS_CHECK(encode_u8(_c_iter, &_c_obj->connected));
   STATUS_CHECK(encode_u8(_c_iter, &_c_obj->pan_seq));
   STATUS_CHECK(encode_u8(_c_iter, &_c_obj->radio_index));
-  STATUS_CHECK(encode_u8(_c_iter, &_c_obj->connected));
   STATUS_CHECK(encode_u8(_c_iter, &_c_obj->channel));
   STATUS_CHECK(encode_u8(_c_iter, &_c_obj->speed));
   STATUS_CHECK(encode_u8(_c_iter, &_c_obj->key_slot));
   STATUS_CHECK(encode_arr_u8_32(_c_iter, &_c_obj->sess_key));
-  STATUS_CHECK(encode_u32(_c_iter, &_c_obj->fw_version));
 
   return caut_status_ok;
 }
@@ -224,21 +230,28 @@ R encode_cmd_connect(EI * const _c_iter, struct cmd_connect const * const _c_obj
   return caut_status_ok;
 }
 
-R encode_res_sleep(EI * const _c_iter, struct res_sleep const * const _c_obj) {
+R encode_sleep_connection(EI * const _c_iter, struct sleep_connection const * const _c_obj) {
   caut_tag8_t _temp_tag = (caut_tag8_t)_c_obj->_tag;
 
-  if (_temp_tag >= UNION_NUM_FIELDS_res_sleep) {
+  if (_temp_tag >= UNION_NUM_FIELDS_sleep_connection) {
     return caut_status_invalid_tag;
   }
 
   STATUS_CHECK(encode_tag8(_c_iter, &_temp_tag));
 
   switch(_c_obj->_tag) {
-  case res_sleep_tag_not_connected: /* No data for field not_connected with index 0. */ break;
-  case res_sleep_tag_keep_awake: /* No data for field keep_awake with index 1. */ break;
-  case res_sleep_tag_needs_reset: /* No data for field needs_reset with index 2. */ break;
-  case res_sleep_tag_connection: STATUS_CHECK(encode_connection(_c_iter, &_c_obj->connection)); break;
+  case sleep_connection_tag_not_connected: /* No data for field not_connected with index 0. */ break;
+  case sleep_connection_tag_keep_awake: /* No data for field keep_awake with index 1. */ break;
+  case sleep_connection_tag_needs_reset: /* No data for field needs_reset with index 2. */ break;
+  case sleep_connection_tag_connection: STATUS_CHECK(encode_connection(_c_iter, &_c_obj->connection)); break;
   }
+
+  return caut_status_ok;
+}
+
+R encode_res_sleep(EI * const _c_iter, struct res_sleep const * const _c_obj) {
+  STATUS_CHECK(encode_bool(_c_iter, &_c_obj->needs_reset));
+  STATUS_CHECK(encode_sleep_connection(_c_iter, &_c_obj->connection));
 
   return caut_status_ok;
 }
@@ -341,21 +354,27 @@ R decode_frame_app(DI * const _c_iter, struct frame_app * const _c_obj) {
   return caut_status_ok;
 }
 
-R decode_res_poll(DI * const _c_iter, struct res_poll * const _c_obj) {
+R decode_poll_frame(DI * const _c_iter, struct poll_frame * const _c_obj) {
   caut_tag8_t _temp_tag;
   STATUS_CHECK(decode_tag8(_c_iter, &_temp_tag));
 
-  if (_temp_tag >= UNION_NUM_FIELDS_res_poll) {
+  if (_temp_tag >= UNION_NUM_FIELDS_poll_frame) {
     return caut_status_invalid_tag;
   } else {
-    _c_obj->_tag = (enum res_poll_tag)_temp_tag;
+    _c_obj->_tag = (enum poll_frame_tag)_temp_tag;
   }
 
   switch(_c_obj->_tag) {
-  case res_poll_tag_none: /* No data for field i"none" with index 0. */ break;
-  case res_poll_tag_needs_reset: /* No data for field i"needs_reset" with index 1. */ break;
-  case res_poll_tag_frame: STATUS_CHECK(decode_frame_app(_c_iter, &_c_obj->frame)); break;
+  case poll_frame_tag_none: /* No data for field i"none" with index 0. */ break;
+  case poll_frame_tag_frame: STATUS_CHECK(decode_frame_app(_c_iter, &_c_obj->frame)); break;
   }
+
+  return caut_status_ok;
+}
+
+R decode_res_poll(DI * const _c_iter, struct res_poll * const _c_obj) {
+  STATUS_CHECK(decode_bool(_c_iter, &_c_obj->needs_reset));
+  STATUS_CHECK(decode_poll_frame(_c_iter, &_c_obj->frame));
 
   return caut_status_ok;
 }
@@ -459,19 +478,19 @@ R decode_arr_u8_32(DI * const _c_iter, struct arr_u8_32 * const _c_obj) {
 }
 
 R decode_connection(DI * const _c_iter, struct connection * const _c_obj) {
-  STATUS_CHECK(decode_u32(_c_iter, &_c_obj->time));
   STATUS_CHECK(decode_u64(_c_iter, &_c_obj->long_addr));
+  STATUS_CHECK(decode_u32(_c_iter, &_c_obj->fw_version));
+  STATUS_CHECK(decode_u32(_c_iter, &_c_obj->time));
   STATUS_CHECK(decode_u16(_c_iter, &_c_obj->pan_id));
   STATUS_CHECK(decode_u16(_c_iter, &_c_obj->short_addr));
   STATUS_CHECK(decode_u16(_c_iter, &_c_obj->gateway_addr));
+  STATUS_CHECK(decode_u8(_c_iter, &_c_obj->connected));
   STATUS_CHECK(decode_u8(_c_iter, &_c_obj->pan_seq));
   STATUS_CHECK(decode_u8(_c_iter, &_c_obj->radio_index));
-  STATUS_CHECK(decode_u8(_c_iter, &_c_obj->connected));
   STATUS_CHECK(decode_u8(_c_iter, &_c_obj->channel));
   STATUS_CHECK(decode_u8(_c_iter, &_c_obj->speed));
   STATUS_CHECK(decode_u8(_c_iter, &_c_obj->key_slot));
   STATUS_CHECK(decode_arr_u8_32(_c_iter, &_c_obj->sess_key));
-  STATUS_CHECK(decode_u32(_c_iter, &_c_obj->fw_version));
 
   return caut_status_ok;
 }
@@ -512,22 +531,29 @@ R decode_cmd_connect(DI * const _c_iter, struct cmd_connect * const _c_obj) {
   return caut_status_ok;
 }
 
-R decode_res_sleep(DI * const _c_iter, struct res_sleep * const _c_obj) {
+R decode_sleep_connection(DI * const _c_iter, struct sleep_connection * const _c_obj) {
   caut_tag8_t _temp_tag;
   STATUS_CHECK(decode_tag8(_c_iter, &_temp_tag));
 
-  if (_temp_tag >= UNION_NUM_FIELDS_res_sleep) {
+  if (_temp_tag >= UNION_NUM_FIELDS_sleep_connection) {
     return caut_status_invalid_tag;
   } else {
-    _c_obj->_tag = (enum res_sleep_tag)_temp_tag;
+    _c_obj->_tag = (enum sleep_connection_tag)_temp_tag;
   }
 
   switch(_c_obj->_tag) {
-  case res_sleep_tag_not_connected: /* No data for field i"not_connected" with index 0. */ break;
-  case res_sleep_tag_keep_awake: /* No data for field i"keep_awake" with index 1. */ break;
-  case res_sleep_tag_needs_reset: /* No data for field i"needs_reset" with index 2. */ break;
-  case res_sleep_tag_connection: STATUS_CHECK(decode_connection(_c_iter, &_c_obj->connection)); break;
+  case sleep_connection_tag_not_connected: /* No data for field i"not_connected" with index 0. */ break;
+  case sleep_connection_tag_keep_awake: /* No data for field i"keep_awake" with index 1. */ break;
+  case sleep_connection_tag_needs_reset: /* No data for field i"needs_reset" with index 2. */ break;
+  case sleep_connection_tag_connection: STATUS_CHECK(decode_connection(_c_iter, &_c_obj->connection)); break;
   }
+
+  return caut_status_ok;
+}
+
+R decode_res_sleep(DI * const _c_iter, struct res_sleep * const _c_obj) {
+  STATUS_CHECK(decode_bool(_c_iter, &_c_obj->needs_reset));
+  STATUS_CHECK(decode_sleep_connection(_c_iter, &_c_obj->connection));
 
   return caut_status_ok;
 }
@@ -602,9 +628,14 @@ void init_frame_app(struct frame_app * _c_obj) {
   _c_obj->_length = 0;
 }
 
-void init_res_poll(struct res_poll * _c_obj) {
-  _c_obj->_tag = (caut_tag8_t) res_poll_tag_none;
+void init_poll_frame(struct poll_frame * _c_obj) {
+  _c_obj->_tag = (caut_tag8_t) poll_frame_tag_none;
   /* No initializer for empty field none */
+}
+
+void init_res_poll(struct res_poll * _c_obj) {
+  init_bool(&_c_obj->needs_reset);
+  init_poll_frame(&_c_obj->frame);
 }
 
 void init_cmd_send(struct cmd_send * _c_obj) {
@@ -639,19 +670,19 @@ void init_arr_u8_32(struct arr_u8_32 * _c_obj) {
 }
 
 void init_connection(struct connection * _c_obj) {
-  init_u32(&_c_obj->time);
   init_u64(&_c_obj->long_addr);
+  init_u32(&_c_obj->fw_version);
+  init_u32(&_c_obj->time);
   init_u16(&_c_obj->pan_id);
   init_u16(&_c_obj->short_addr);
   init_u16(&_c_obj->gateway_addr);
+  init_u8(&_c_obj->connected);
   init_u8(&_c_obj->pan_seq);
   init_u8(&_c_obj->radio_index);
-  init_u8(&_c_obj->connected);
   init_u8(&_c_obj->channel);
   init_u8(&_c_obj->speed);
   init_u8(&_c_obj->key_slot);
   init_arr_u8_32(&_c_obj->sess_key);
-  init_u32(&_c_obj->fw_version);
 }
 
 void init_req_connect(struct req_connect * _c_obj) {
@@ -664,9 +695,14 @@ void init_cmd_connect(struct cmd_connect * _c_obj) {
   init_req_connect(&_c_obj->req);
 }
 
-void init_res_sleep(struct res_sleep * _c_obj) {
-  _c_obj->_tag = (caut_tag8_t) res_sleep_tag_not_connected;
+void init_sleep_connection(struct sleep_connection * _c_obj) {
+  _c_obj->_tag = (caut_tag8_t) sleep_connection_tag_not_connected;
   /* No initializer for empty field not_connected */
+}
+
+void init_res_sleep(struct res_sleep * _c_obj) {
+  init_bool(&_c_obj->needs_reset);
+  init_sleep_connection(&_c_obj->connection);
 }
 
 void init_cmd_sleep(struct cmd_sleep * _c_obj) {
@@ -719,7 +755,7 @@ enum caut_ord compare_frame_app(struct frame_app const * const _c_a, struct fram
   return CAUT_ORDER(_c_a->_length, _c_b->_length);
 }
 
-enum caut_ord compare_res_poll(struct res_poll const * const _c_a, struct res_poll const * const _c_b) {
+enum caut_ord compare_poll_frame(struct poll_frame const * const _c_a, struct poll_frame const * const _c_b) {
   enum caut_ord _c_o;
 
   if (caut_ord_eq != (_c_o = CAUT_ORDER(_c_a->_tag, _c_b->_tag))) {
@@ -727,18 +763,25 @@ enum caut_ord compare_res_poll(struct res_poll const * const _c_a, struct res_po
   }
 
   switch(_c_a->_tag) {
-  case res_poll_tag_none:
+  case poll_frame_tag_none:
     _c_o = caut_ord_eq; /* No comparison for empty field none */
     break;
-  case res_poll_tag_needs_reset:
-    _c_o = caut_ord_eq; /* No comparison for empty field needs_reset */
-    break;
-  case res_poll_tag_frame:
+  case poll_frame_tag_frame:
     _c_o = compare_frame_app(&_c_a->frame, &_c_b->frame);
     break;
   }
 
   return _c_o;
+}
+
+enum caut_ord compare_res_poll(struct res_poll const * const _c_a, struct res_poll const * const _c_b) {
+  enum caut_ord _c_o;
+
+  if (caut_ord_eq != (_c_o = compare_bool(&_c_a->needs_reset, &_c_b->needs_reset))) { return _c_o; }
+  if (caut_ord_eq != (_c_o = compare_poll_frame(&_c_a->frame, &_c_b->frame))) { return _c_o; }
+
+  return caut_ord_eq;
+
 }
 
 enum caut_ord compare_cmd_send(struct cmd_send const * const _c_a, struct cmd_send const * const _c_b) {
@@ -850,19 +893,19 @@ enum caut_ord compare_arr_u8_32(struct arr_u8_32 const * const _c_a, struct arr_
 enum caut_ord compare_connection(struct connection const * const _c_a, struct connection const * const _c_b) {
   enum caut_ord _c_o;
 
-  if (caut_ord_eq != (_c_o = compare_u32(&_c_a->time, &_c_b->time))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u64(&_c_a->long_addr, &_c_b->long_addr))) { return _c_o; }
+  if (caut_ord_eq != (_c_o = compare_u32(&_c_a->fw_version, &_c_b->fw_version))) { return _c_o; }
+  if (caut_ord_eq != (_c_o = compare_u32(&_c_a->time, &_c_b->time))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u16(&_c_a->pan_id, &_c_b->pan_id))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u16(&_c_a->short_addr, &_c_b->short_addr))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u16(&_c_a->gateway_addr, &_c_b->gateway_addr))) { return _c_o; }
+  if (caut_ord_eq != (_c_o = compare_u8(&_c_a->connected, &_c_b->connected))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u8(&_c_a->pan_seq, &_c_b->pan_seq))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u8(&_c_a->radio_index, &_c_b->radio_index))) { return _c_o; }
-  if (caut_ord_eq != (_c_o = compare_u8(&_c_a->connected, &_c_b->connected))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u8(&_c_a->channel, &_c_b->channel))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u8(&_c_a->speed, &_c_b->speed))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_u8(&_c_a->key_slot, &_c_b->key_slot))) { return _c_o; }
   if (caut_ord_eq != (_c_o = compare_arr_u8_32(&_c_a->sess_key, &_c_b->sess_key))) { return _c_o; }
-  if (caut_ord_eq != (_c_o = compare_u32(&_c_a->fw_version, &_c_b->fw_version))) { return _c_o; }
 
   return caut_ord_eq;
 
@@ -906,7 +949,7 @@ enum caut_ord compare_cmd_connect(struct cmd_connect const * const _c_a, struct 
   return _c_o;
 }
 
-enum caut_ord compare_res_sleep(struct res_sleep const * const _c_a, struct res_sleep const * const _c_b) {
+enum caut_ord compare_sleep_connection(struct sleep_connection const * const _c_a, struct sleep_connection const * const _c_b) {
   enum caut_ord _c_o;
 
   if (caut_ord_eq != (_c_o = CAUT_ORDER(_c_a->_tag, _c_b->_tag))) {
@@ -914,21 +957,31 @@ enum caut_ord compare_res_sleep(struct res_sleep const * const _c_a, struct res_
   }
 
   switch(_c_a->_tag) {
-  case res_sleep_tag_not_connected:
+  case sleep_connection_tag_not_connected:
     _c_o = caut_ord_eq; /* No comparison for empty field not_connected */
     break;
-  case res_sleep_tag_keep_awake:
+  case sleep_connection_tag_keep_awake:
     _c_o = caut_ord_eq; /* No comparison for empty field keep_awake */
     break;
-  case res_sleep_tag_needs_reset:
+  case sleep_connection_tag_needs_reset:
     _c_o = caut_ord_eq; /* No comparison for empty field needs_reset */
     break;
-  case res_sleep_tag_connection:
+  case sleep_connection_tag_connection:
     _c_o = compare_connection(&_c_a->connection, &_c_b->connection);
     break;
   }
 
   return _c_o;
+}
+
+enum caut_ord compare_res_sleep(struct res_sleep const * const _c_a, struct res_sleep const * const _c_b) {
+  enum caut_ord _c_o;
+
+  if (caut_ord_eq != (_c_o = compare_bool(&_c_a->needs_reset, &_c_b->needs_reset))) { return _c_o; }
+  if (caut_ord_eq != (_c_o = compare_sleep_connection(&_c_a->connection, &_c_b->connection))) { return _c_o; }
+
+  return caut_ord_eq;
+
 }
 
 enum caut_ord compare_cmd_sleep(struct cmd_sleep const * const _c_a, struct cmd_sleep const * const _c_b) {
