@@ -8,7 +8,7 @@
 #define VERSION_atom_api "1.0.0"
 #define MIN_SIZE_atom_api (1)
 #define MAX_SIZE_atom_api (110)
-#define NUM_TYPES_atom_api (20)
+#define NUM_TYPES_atom_api (22)
 
 /* schema hash */
 extern hashtype_t const SCHEMA_HASH_atom_api;
@@ -26,15 +26,17 @@ enum type_index_atom_api {
   type_index_atom_api_cmd_mac = 8,
   type_index_atom_api_cmd_info = 9,
   type_index_atom_api_cmd_connected = 10,
-  type_index_atom_api_arr_u8_32 = 11,
-  type_index_atom_api_connection = 12,
-  type_index_atom_api_req_connect = 13,
-  type_index_atom_api_cmd_connect = 14,
-  type_index_atom_api_sleep_connection = 15,
-  type_index_atom_api_res_sleep = 16,
-  type_index_atom_api_cmd_sleep = 17,
-  type_index_atom_api_cmd = 18,
-  type_index_atom_api_txn = 19,
+  type_index_atom_api_atom_baud = 11,
+  type_index_atom_api_cmd_baud = 12,
+  type_index_atom_api_arr_u8_32 = 13,
+  type_index_atom_api_connection = 14,
+  type_index_atom_api_req_connect = 15,
+  type_index_atom_api_cmd_connect = 16,
+  type_index_atom_api_sleep_connection = 17,
+  type_index_atom_api_res_sleep = 18,
+  type_index_atom_api_cmd_sleep = 19,
+  type_index_atom_api_cmd = 20,
+  type_index_atom_api_txn = 21,
 };
 
 /* type definitions */
@@ -84,7 +86,7 @@ struct poll_frame {
 
 struct res_poll {
   bool needs_reset;
-  struct poll_frame frame;
+  struct poll_frame maybe_frame;
 };
 
 #define UNION_NUM_FIELDS_cmd_send (0x2ull)
@@ -162,6 +164,33 @@ struct cmd_connected {
 
 };
 
+#define ENUM_MAX_VAL_atom_baud (atom_baud_b230400)
+enum atom_baud {
+  atom_baud_b9600 = 0,
+  atom_baud_b14400 = 1,
+  atom_baud_b19200 = 2,
+  atom_baud_b38400 = 3,
+  atom_baud_b57600 = 4,
+  atom_baud_b115200 = 5,
+  atom_baud_b128000 = 6,
+  atom_baud_b230400 = 7,
+};
+
+#define UNION_NUM_FIELDS_cmd_baud (0x2ull)
+struct cmd_baud {
+  enum cmd_baud_tag {
+    cmd_baud_tag_req = 0,
+    cmd_baud_tag_res = 1,
+  } _tag;
+
+
+  union {
+    enum atom_baud req;
+    bool res;
+  };
+
+};
+
 #define ARRAY_LEN_arr_u8_32 (32)
 struct arr_u8_32 {
   uint8_t elems[ARRAY_LEN_arr_u8_32];
@@ -213,20 +242,18 @@ struct cmd_connect {
 
 };
 
-#define UNION_NUM_FIELDS_sleep_connection (0x4ull)
+#define UNION_NUM_FIELDS_sleep_connection (0x3ull)
 struct sleep_connection {
   enum sleep_connection_tag {
     sleep_connection_tag_not_connected = 0,
     sleep_connection_tag_keep_awake = 1,
-    sleep_connection_tag_needs_reset = 2,
-    sleep_connection_tag_connection = 3,
+    sleep_connection_tag_connection = 2,
   } _tag;
 
 
   union {
     /* no data for field i"not_connected" with index 0 */
     /* no data for field i"keep_awake" with index 1 */
-    /* no data for field i"needs_reset" with index 2 */
     struct connection connection;
   };
 
@@ -234,7 +261,7 @@ struct sleep_connection {
 
 struct res_sleep {
   bool needs_reset;
-  struct sleep_connection connection;
+  struct sleep_connection maybe_connection;
 };
 
 #define UNION_NUM_FIELDS_cmd_sleep (0x2ull)
@@ -252,7 +279,7 @@ struct cmd_sleep {
 
 };
 
-#define UNION_NUM_FIELDS_cmd (0x6ull)
+#define UNION_NUM_FIELDS_cmd (0x7ull)
 struct cmd {
   enum cmd_tag {
     cmd_tag_info = 0,
@@ -261,6 +288,7 @@ struct cmd {
     cmd_tag_connected = 3,
     cmd_tag_poll = 4,
     cmd_tag_sleep = 5,
+    cmd_tag_baud = 6,
   } _tag;
 
 
@@ -271,6 +299,7 @@ struct cmd {
     struct cmd_connected connected;
     struct cmd_poll poll;
     struct cmd_sleep sleep;
+    struct cmd_baud baud;
   };
 
 };
@@ -336,6 +365,16 @@ enum caut_status encode_cmd_connected(struct caut_encode_iter * const _c_iter, s
 enum caut_status decode_cmd_connected(struct caut_decode_iter * const _c_iter, struct cmd_connected * const _c_obj);
 void init_cmd_connected(struct cmd_connected * _c_obj);
 enum caut_ord compare_cmd_connected(struct cmd_connected const * const _c_a, struct cmd_connected const * const _c_b);
+
+enum caut_status encode_atom_baud(struct caut_encode_iter * const _c_iter, enum atom_baud const * const _c_obj);
+enum caut_status decode_atom_baud(struct caut_decode_iter * const _c_iter, enum atom_baud * const _c_obj);
+void init_atom_baud(enum atom_baud * _c_obj);
+enum caut_ord compare_atom_baud(enum atom_baud const * const _c_a, enum atom_baud const * const _c_b);
+
+enum caut_status encode_cmd_baud(struct caut_encode_iter * const _c_iter, struct cmd_baud const * const _c_obj);
+enum caut_status decode_cmd_baud(struct caut_decode_iter * const _c_iter, struct cmd_baud * const _c_obj);
+void init_cmd_baud(struct cmd_baud * _c_obj);
+enum caut_ord compare_cmd_baud(struct cmd_baud const * const _c_a, struct cmd_baud const * const _c_b);
 
 enum caut_status encode_arr_u8_32(struct caut_encode_iter * const _c_iter, struct arr_u8_32 const * const _c_obj);
 enum caut_status decode_arr_u8_32(struct caut_decode_iter * const _c_iter, struct arr_u8_32 * const _c_obj);

@@ -1,5 +1,4 @@
 #include "carbon.h"
-#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -188,7 +187,6 @@ send_command(struct carbon_ctx * ctx)
 void
 carbon_init(struct carbon_ctx * ctx, void * param)
 {
-    assert(ctx);
     memset(ctx, 0, sizeof(*ctx));
     if (NULL != param)
     {
@@ -197,7 +195,46 @@ carbon_init(struct carbon_ctx * ctx, void * param)
 }
 
 int
-carbon_info(struct carbon_ctx * ctx, struct res_info * info)
+carbon_baud(struct carbon_ctx * ctx, enum carbon_baud baud)
+{
+    ctx->txn.cmd._tag      = cmd_tag_baud;
+    ctx->txn.cmd.baud._tag = cmd_baud_tag_req;
+
+    enum atom_baud atom_baud = atom_baud_b9600;
+    switch (baud)
+    {
+    case carbon_baud_b115200:
+        atom_baud = atom_baud_b115200;
+        break;
+    case carbon_baud_b57600:
+        atom_baud = atom_baud_b57600;
+        break;
+    case carbon_baud_b38400:
+        atom_baud = atom_baud_b38400;
+        break;
+    case carbon_baud_b19200:
+        atom_baud = atom_baud_b19200;
+        break;
+    case carbon_baud_b14400:
+        atom_baud = atom_baud_b14400;
+        break;
+    case carbon_baud_b9600:
+        atom_baud = atom_baud_b9600;
+        break;
+    }
+    ctx->txn.cmd.baud.req = atom_baud;
+
+    enum send_command_status status = send_command(ctx);
+    if (send_command_OK != status)
+    {
+        return carbon_info_ERR_COMMUNICATION;
+    }
+
+    return carbon_info_OK;
+}
+
+int
+carbon_info(struct carbon_ctx * ctx, struct carbon_info * info)
 {
     ctx->txn.cmd._tag      = cmd_tag_info;
     ctx->txn.cmd.info._tag = cmd_info_tag_req;
@@ -208,7 +245,12 @@ carbon_info(struct carbon_ctx * ctx, struct res_info * info)
         return carbon_info_ERR_COMMUNICATION;
     }
 
-    *info = ctx->txn.cmd.info.res;
+    info->mac         = ctx->txn.cmd.info.res.mac;
+    info->uptime      = ctx->txn.cmd.info.res.uptime;
+    info->time        = ctx->txn.cmd.info.res.time;
+    info->fw_version  = ctx->txn.cmd.info.res.fw_version;
+    info->radio_count = ctx->txn.cmd.info.res.radio_count;
+
     return carbon_info_OK;
 }
 
@@ -234,7 +276,6 @@ carbon_connected(struct carbon_ctx * ctx)
 int
 carbon_connect(struct carbon_ctx * ctx, struct connection * connection)
 {
-    assert(ctx);
     ctx->txn.cmd._tag         = cmd_tag_connect;
     ctx->txn.cmd.connect._tag = cmd_connect_tag_req;
 
@@ -259,21 +300,15 @@ carbon_connect(struct carbon_ctx * ctx, struct connection * connection)
     while (--wait_cycles)
     {
         enum carbon_connected_status connected_status = carbon_connected(ctx);
-        if (carbon_connected_CONNECTED == connected_status)
+        switch (connected_status)
         {
-            break;
-        }
-        else if (carbon_connected_NOT_CONNECTED == connected_status)
-        {
+        case carbon_connected_CONNECTED:
+            return carbon_connect_CONNECTED;
+        case carbon_connected_NOT_CONNECTED:
             carbon_wait_us(ctx->param, wait_us);
-        }
-        else if (carbon_connected_ERR_COMMUNICATION == connected_status)
-        {
+            break;
+        case carbon_connected_ERR_COMMUNICATION:
             return carbon_connect_ERR_COMMUNICATION;
-        }
-        else
-        {
-            assert(0);
         }
     }
 
@@ -282,15 +317,12 @@ carbon_connect(struct carbon_ctx * ctx, struct connection * connection)
         return carbon_connect_ERR_CONNECT_TIMEOUT;
     }
 
-    return carbon_connect_CONNECTED;
+    return carbon_connect_ERR_COMMUNICATION;
 }
 
 int
 carbon_sleep(struct carbon_ctx * ctx, struct connection * connection)
 {
-    assert(ctx);
-    assert(connection);
-
     ctx->txn.cmd._tag       = cmd_tag_sleep;
     ctx->txn.cmd.sleep._tag = cmd_sleep_tag_req;
 
@@ -300,18 +332,20 @@ carbon_sleep(struct carbon_ctx * ctx, struct connection * connection)
         return carbon_sleep_ERR_COMMUNICATION;
     }
 
-    switch (ctx->txn.cmd.sleep.res.connection._tag)
+    ctx->needs_reset = ctx->txn.cmd.sleep.res.needs_reset;
+
+    switch (ctx->txn.cmd.sleep.res.maybe_connection._tag)
     {
     case sleep_connection_tag_not_connected:
         return carbon_sleep_ERR_NOT_CONNECTED;
     case sleep_connection_tag_keep_awake:
         return carbon_sleep_ERR_KEEP_AWAKE;
     case sleep_connection_tag_connection:
-        *connection = ctx->txn.cmd.sleep.res.connection.connection;
+        if (connection)
+        {
+            *connection = ctx->txn.cmd.sleep.res.maybe_connection.connection;
+        }
         return carbon_sleep_OK;
-    case sleep_connection_tag_needs_reset:
-        // TODO: REMOVE once schema fixes land
-        return carbon_sleep_ERR_COMMUNICATION;
     }
     return carbon_sleep_ERR_COMMUNICATION;
 }
@@ -329,37 +363,46 @@ enum carbon_send_status
 static enum carbon_send_status
 carbon_send(struct carbon_ctx * ctx, void const * data, size_t len)
 {
-    assert(ctx);
-    assert(data);
-
     ctx->txn.cmd._tag      = cmd_tag_send;
     ctx->txn.cmd.send._tag = cmd_send_tag_req;
 
-    size_t copylen = len;
+    size_t copylen = data ? len : 0;
     if (copylen > VECTOR_MAX_LEN_frame_app)
     {
         copylen = VECTOR_MAX_LEN_frame_app;
     }
-    memcpy(ctx->txn.cmd.send.req.elems, data, copylen);
+
+    if (data)
+    {
+        memcpy(ctx->txn.cmd.send.req.elems, data, copylen);
+    }
     ctx->txn.cmd.send.req._length = copylen;
 
-    enum send_command_status status = send_command(ctx);
-    if (send_command_OK != status)
+    // Atom already retries a number of times itself. This additional
+    // retry count covers the application level errors.
+    uint8_t retries = 3;
+    while (retries-- > 0)
     {
-        return carbon_send_ERR_COMMUNICATION;
-    }
+        enum send_command_status status = send_command(ctx);
+        if (send_command_OK != status)
+        {
+            return carbon_send_ERR_COMMUNICATION;
+        }
 
-    switch (ctx->txn.cmd.send.res)
-    {
-    case res_send_ok:
-        return carbon_send_OK;
-    case res_send_err_not_connected:
-        return carbon_send_ERR_NOT_CONNECTED;
-    case res_send_err_dropped:
-        return carbon_send_ERR_DROPPED;
-    case res_send_err_nack:
-    case res_send_err_channel_access:
-        assert(0); // TDB: Should ideally resend
+        switch (ctx->txn.cmd.send.res)
+        {
+        case res_send_ok:
+            return carbon_send_OK;
+        case res_send_err_not_connected:
+            return carbon_send_ERR_NOT_CONNECTED;
+        case res_send_err_dropped:
+            return carbon_send_ERR_DROPPED;
+        case res_send_err_nack:
+        case res_send_err_channel_access:
+            // Loop back around to retry
+            // No need to delay here since serial comms will add enough overhead
+            break;
+        }
     }
     return carbon_send_ERR_COMMUNICATION;
 }
@@ -371,72 +414,59 @@ enum carbon_poll_status
     carbon_poll_ERR_COMMUNICATION,
 };
 
-/* Poll the Atom for received data.
- *
- * Parameters:
- *   - ctx: the carbon context (required)
- *   - data: the buffer to copy RX data into (required)
- *   - len: the length of the buffer (required)
- *   - used: how much of the buffer was used (required)
- *   - drops: how many packets have been dropped due to a low polling
- *            rate since the Atom was last powered on (optional)
- *
- * Returns:
- *   - _OK_DATA: when received bytes are copied into data
- *   - _OK_NO_DATA: no data was received
- *       be reset
- */
+#define CARBON_POLL_WAIT_US 500000
+#define CARBON_POLL_RETRIES_60S ((1000000 / CARBON_POLL_WAIT_US) * 60)
+
 static enum carbon_poll_status
 carbon_poll(struct carbon_ctx * ctx,
             void *              data,
             const size_t        len,
             size_t *            used,
-            uint32_t *          drops)
+            uint32_t            retries)
 {
-    assert(ctx);
-    assert(data);
-    assert(used);
-
-    *used = 0;
-    if (drops)
-    {
-        *drops = 0;
-    }
-
     ctx->txn.cmd._tag      = cmd_tag_poll;
     ctx->txn.cmd.poll._tag = cmd_poll_tag_req;
 
-    enum send_command_status status = send_command(ctx);
-    if (send_command_OK != status)
+    while (retries-- > 0)
     {
-        return carbon_poll_ERR_COMMUNICATION;
+        enum send_command_status status = send_command(ctx);
+        if (send_command_OK != status)
+        {
+            return carbon_poll_ERR_COMMUNICATION;
+        }
+
+        ctx->needs_reset = ctx->txn.cmd.sleep.res.needs_reset;
+
+        switch (ctx->txn.cmd.poll.res.maybe_frame._tag)
+        {
+        case poll_frame_tag_none:
+            break;
+        case poll_frame_tag_frame:
+        {
+            size_t copylen = ctx->txn.cmd.poll.res.maybe_frame.frame._length;
+            if (copylen > len)
+            {
+                copylen = len;
+            }
+            if (data)
+            {
+                memcpy(data,
+                       ctx->txn.cmd.poll.res.maybe_frame.frame.elems,
+                       copylen);
+            }
+            if (used)
+            {
+                *used = copylen;
+            }
+            return carbon_poll_OK_DATA;
+        }
+        }
+        if (retries > 0) {
+            carbon_wait_us(ctx->param, CARBON_POLL_WAIT_US);
+        }
     }
 
-    if (drops)
-    {
-        // TODO: drops missing in schema
-    }
-
-    switch (ctx->txn.cmd.poll.res.frame._tag)
-    {
-    case poll_frame_tag_none:
-        return carbon_poll_OK_NO_DATA;
-    case poll_frame_tag_frame:
-    {
-        size_t copylen = ctx->txn.cmd.poll.res.frame.frame._length;
-        if (copylen > len)
-        {
-            copylen = len;
-        }
-        memcpy(data, ctx->txn.cmd.poll.res.frame.frame.elems, copylen);
-        if (used)
-        {
-            *used = copylen;
-        }
-        return carbon_poll_OK_DATA;
-    }
-    }
-    return carbon_poll_ERR_COMMUNICATION;
+    return carbon_poll_OK_NO_DATA;
 }
 
 
@@ -474,23 +504,18 @@ carbon_channel_create(struct carbon_ctx * ctx,
     }
 
     // Now receive
-    frame                        = ctx->buf;
-    size_t                  used = 0;
-    enum carbon_poll_status poll_status;
-    while (carbon_poll_OK_NO_DATA
-           == (poll_status =
-                   carbon_poll(ctx, frame, CARBON_MAX_DATA_SIZE, &used, NULL)))
-    {
-        carbon_wait_us(ctx->param, 500000);
-    }
+    frame                               = ctx->buf;
+    size_t                  used        = 0;
+    enum carbon_poll_status poll_status =
+        carbon_poll(ctx, frame, CARBON_MAX_DATA_SIZE, &used,
+                    CARBON_POLL_RETRIES_60S);
 
     switch (poll_status)
     {
     case carbon_poll_OK_DATA:
         break; // received some data
     case carbon_poll_OK_NO_DATA:
-        // Should not happen
-        return carbon_channel_create_ERR_COMMUNICATION;
+        return carbon_channel_create_ERR_TIMEOUT;
     case carbon_poll_ERR_COMMUNICATION:
         return carbon_channel_create_ERR_COMMUNICATION;
     }
@@ -500,6 +525,7 @@ carbon_channel_create(struct carbon_ctx * ctx,
     {
         return carbon_channel_create_ERR_COMMUNICATION;
     }
+
     switch (frame[0])
     {
     case CHANNEL_CREATED:
@@ -553,23 +579,18 @@ carbon_channel_send(struct carbon_ctx * ctx,
     }
 
     // Now receive
-    frame                        = ctx->buf;
-    size_t                  used = 0;
-    enum carbon_poll_status poll_status;
-    while (carbon_poll_OK_NO_DATA
-           == (poll_status =
-                   carbon_poll(ctx, frame, CARBON_MAX_DATA_SIZE, &used, NULL)))
-    {
-        carbon_wait_us(ctx->param, 500000);
-    }
+    frame                               = ctx->buf;
+    size_t                  used        = 0;
+    enum carbon_poll_status poll_status =
+        carbon_poll(ctx, frame, CARBON_MAX_DATA_SIZE, &used,
+                    CARBON_POLL_RETRIES_60S);
 
     switch (poll_status)
     {
     case carbon_poll_OK_DATA:
         break; // received some data
     case carbon_poll_OK_NO_DATA:
-        // Should not happen
-        return carbon_channel_send_ERR_COMMUNICATION;
+        return carbon_channel_send_ERR_TIMEOUT;
     case carbon_poll_ERR_COMMUNICATION:
         return carbon_channel_send_ERR_COMMUNICATION;
     }

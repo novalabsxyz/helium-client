@@ -48,6 +48,7 @@ enum carbon_channel_create_status
     carbon_channel_create_ERR_FAILED        = carbon_status_ERR_FAILED,
     carbon_channel_create_ERR_NOT_CONNECTED = carbon_status_ERR_NOT_CONNECTED,
     carbon_channel_create_ERR_DROPPED       = carbon_status_ERR_DROPPED,
+    carbon_channel_create_ERR_TIMEOUT       = carbon_status_ERR_TIMEOUT,
     carbon_channel_create_ERR_COMMUNICATION = carbon_status_ERR_COMMUNICATION,
 };
 
@@ -57,6 +58,7 @@ enum carbon_channel_send_status
     carbon_channel_send_ERR_NOT_FOUND     = carbon_status_ERR_NOT_FOUND,
     carbon_channel_send_ERR_NOT_CONNECTED = carbon_status_ERR_NOT_CONNECTED,
     carbon_channel_send_ERR_DROPPED       = carbon_status_ERR_DROPPED,
+    carbon_channel_send_ERR_TIMEOUT       = carbon_status_ERR_TIMEOUT,
     carbon_channel_send_ERR_COMMUNICATION = carbon_status_ERR_COMMUNICATION,
 };
 

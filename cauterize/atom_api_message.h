@@ -35,6 +35,8 @@ struct message_atom_api {
     struct cmd_mac msg_cmd_mac;
     struct cmd_info msg_cmd_info;
     struct cmd_connected msg_cmd_connected;
+    enum atom_baud msg_atom_baud;
+    struct cmd_baud msg_cmd_baud;
     struct arr_u8_32 msg_arr_u8_32;
     struct connection msg_connection;
     struct req_connect msg_req_connect;

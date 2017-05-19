@@ -6,7 +6,7 @@
 #define FSET(FS,IX) ((FS) & (1ull << (IX)))
 
 /* schema hash */
-hashtype_t const SCHEMA_HASH_atom_api = { 0x8A,0xD8,0x93,0x3C,0x3F,0x4F,0x01,0x0D,0x11,0x10,0x70,0x26,0xE0,0xB9,0x7B,0x6C,0x7E,0x3C,0x44,0x8A };
+hashtype_t const SCHEMA_HASH_atom_api = { 0x50,0xBD,0x29,0x1C,0x5B,0x6E,0x00,0x09,0xB8,0xC9,0xD4,0x62,0xB8,0x9F,0xD8,0xB8,0xE9,0xA8,0xB2,0xBD };
 
 /* type encoders */
 R encode_res_send(EI * const _c_iter, enum res_send const * const _c_obj) {
@@ -80,7 +80,7 @@ R encode_poll_frame(EI * const _c_iter, struct poll_frame const * const _c_obj) 
 
 R encode_res_poll(EI * const _c_iter, struct res_poll const * const _c_obj) {
   STATUS_CHECK(encode_bool(_c_iter, &_c_obj->needs_reset));
-  STATUS_CHECK(encode_poll_frame(_c_iter, &_c_obj->frame));
+  STATUS_CHECK(encode_poll_frame(_c_iter, &_c_obj->maybe_frame));
 
   return caut_status_ok;
 }
@@ -170,6 +170,37 @@ R encode_cmd_connected(EI * const _c_iter, struct cmd_connected const * const _c
   return caut_status_ok;
 }
 
+R encode_atom_baud(EI * const _c_iter, enum atom_baud const * const _c_obj) {
+  caut_tag8_t _c_tag;
+
+  if (ENUM_MAX_VAL_atom_baud < *_c_obj) {
+    return caut_status_enumeration_out_of_range;
+  }
+
+  _c_tag = (caut_tag8_t)*_c_obj;
+
+  STATUS_CHECK(encode_tag8(_c_iter, &_c_tag));
+
+  return caut_status_ok;
+}
+
+R encode_cmd_baud(EI * const _c_iter, struct cmd_baud const * const _c_obj) {
+  caut_tag8_t _temp_tag = (caut_tag8_t)_c_obj->_tag;
+
+  if (_temp_tag >= UNION_NUM_FIELDS_cmd_baud) {
+    return caut_status_invalid_tag;
+  }
+
+  STATUS_CHECK(encode_tag8(_c_iter, &_temp_tag));
+
+  switch(_c_obj->_tag) {
+  case cmd_baud_tag_req: STATUS_CHECK(encode_atom_baud(_c_iter, &_c_obj->req)); break;
+  case cmd_baud_tag_res: STATUS_CHECK(encode_bool(_c_iter, &_c_obj->res)); break;
+  }
+
+  return caut_status_ok;
+}
+
 R encode_arr_u8_32(EI * const _c_iter, struct arr_u8_32 const * const _c_obj) {
   for (size_t _c_i = 0; _c_i < ARR_LEN(_c_obj->elems); _c_i++) {
     STATUS_CHECK(encode_u8(_c_iter, &_c_obj->elems[_c_i]));
@@ -242,7 +273,6 @@ R encode_sleep_connection(EI * const _c_iter, struct sleep_connection const * co
   switch(_c_obj->_tag) {
   case sleep_connection_tag_not_connected: /* No data for field not_connected with index 0. */ break;
   case sleep_connection_tag_keep_awake: /* No data for field keep_awake with index 1. */ break;
-  case sleep_connection_tag_needs_reset: /* No data for field needs_reset with index 2. */ break;
   case sleep_connection_tag_connection: STATUS_CHECK(encode_connection(_c_iter, &_c_obj->connection)); break;
   }
 
@@ -251,7 +281,7 @@ R encode_sleep_connection(EI * const _c_iter, struct sleep_connection const * co
 
 R encode_res_sleep(EI * const _c_iter, struct res_sleep const * const _c_obj) {
   STATUS_CHECK(encode_bool(_c_iter, &_c_obj->needs_reset));
-  STATUS_CHECK(encode_sleep_connection(_c_iter, &_c_obj->connection));
+  STATUS_CHECK(encode_sleep_connection(_c_iter, &_c_obj->maybe_connection));
 
   return caut_status_ok;
 }
@@ -289,6 +319,7 @@ R encode_cmd(EI * const _c_iter, struct cmd const * const _c_obj) {
   case cmd_tag_connected: STATUS_CHECK(encode_cmd_connected(_c_iter, &_c_obj->connected)); break;
   case cmd_tag_poll: STATUS_CHECK(encode_cmd_poll(_c_iter, &_c_obj->poll)); break;
   case cmd_tag_sleep: STATUS_CHECK(encode_cmd_sleep(_c_iter, &_c_obj->sleep)); break;
+  case cmd_tag_baud: STATUS_CHECK(encode_cmd_baud(_c_iter, &_c_obj->baud)); break;
   }
 
   return caut_status_ok;
@@ -374,7 +405,7 @@ R decode_poll_frame(DI * const _c_iter, struct poll_frame * const _c_obj) {
 
 R decode_res_poll(DI * const _c_iter, struct res_poll * const _c_obj) {
   STATUS_CHECK(decode_bool(_c_iter, &_c_obj->needs_reset));
-  STATUS_CHECK(decode_poll_frame(_c_iter, &_c_obj->frame));
+  STATUS_CHECK(decode_poll_frame(_c_iter, &_c_obj->maybe_frame));
 
   return caut_status_ok;
 }
@@ -469,6 +500,37 @@ R decode_cmd_connected(DI * const _c_iter, struct cmd_connected * const _c_obj) 
   return caut_status_ok;
 }
 
+R decode_atom_baud(DI * const _c_iter, enum atom_baud * const _c_obj) {
+  caut_tag8_t _c_tag;
+  STATUS_CHECK(decode_tag8(_c_iter, &_c_tag));
+
+  if (ENUM_MAX_VAL_atom_baud < _c_tag) {
+    return caut_status_enumeration_out_of_range;
+  }
+
+  *_c_obj = (enum atom_baud)_c_tag;
+
+  return caut_status_ok;
+}
+
+R decode_cmd_baud(DI * const _c_iter, struct cmd_baud * const _c_obj) {
+  caut_tag8_t _temp_tag;
+  STATUS_CHECK(decode_tag8(_c_iter, &_temp_tag));
+
+  if (_temp_tag >= UNION_NUM_FIELDS_cmd_baud) {
+    return caut_status_invalid_tag;
+  } else {
+    _c_obj->_tag = (enum cmd_baud_tag)_temp_tag;
+  }
+
+  switch(_c_obj->_tag) {
+  case cmd_baud_tag_req: STATUS_CHECK(decode_atom_baud(_c_iter, &_c_obj->req)); break;
+  case cmd_baud_tag_res: STATUS_CHECK(decode_bool(_c_iter, &_c_obj->res)); break;
+  }
+
+  return caut_status_ok;
+}
+
 R decode_arr_u8_32(DI * const _c_iter, struct arr_u8_32 * const _c_obj) {
   for (size_t _c_i = 0; _c_i < ARR_LEN(_c_obj->elems); _c_i++) {
     STATUS_CHECK(decode_u8(_c_iter, &_c_obj->elems[_c_i]));
@@ -544,7 +606,6 @@ R decode_sleep_connection(DI * const _c_iter, struct sleep_connection * const _c
   switch(_c_obj->_tag) {
   case sleep_connection_tag_not_connected: /* No data for field i"not_connected" with index 0. */ break;
   case sleep_connection_tag_keep_awake: /* No data for field i"keep_awake" with index 1. */ break;
-  case sleep_connection_tag_needs_reset: /* No data for field i"needs_reset" with index 2. */ break;
   case sleep_connection_tag_connection: STATUS_CHECK(decode_connection(_c_iter, &_c_obj->connection)); break;
   }
 
@@ -553,7 +614,7 @@ R decode_sleep_connection(DI * const _c_iter, struct sleep_connection * const _c
 
 R decode_res_sleep(DI * const _c_iter, struct res_sleep * const _c_obj) {
   STATUS_CHECK(decode_bool(_c_iter, &_c_obj->needs_reset));
-  STATUS_CHECK(decode_sleep_connection(_c_iter, &_c_obj->connection));
+  STATUS_CHECK(decode_sleep_connection(_c_iter, &_c_obj->maybe_connection));
 
   return caut_status_ok;
 }
@@ -593,6 +654,7 @@ R decode_cmd(DI * const _c_iter, struct cmd * const _c_obj) {
   case cmd_tag_connected: STATUS_CHECK(decode_cmd_connected(_c_iter, &_c_obj->connected)); break;
   case cmd_tag_poll: STATUS_CHECK(decode_cmd_poll(_c_iter, &_c_obj->poll)); break;
   case cmd_tag_sleep: STATUS_CHECK(decode_cmd_sleep(_c_iter, &_c_obj->sleep)); break;
+  case cmd_tag_baud: STATUS_CHECK(decode_cmd_baud(_c_iter, &_c_obj->baud)); break;
   }
 
   return caut_status_ok;
@@ -635,7 +697,7 @@ void init_poll_frame(struct poll_frame * _c_obj) {
 
 void init_res_poll(struct res_poll * _c_obj) {
   init_bool(&_c_obj->needs_reset);
-  init_poll_frame(&_c_obj->frame);
+  init_poll_frame(&_c_obj->maybe_frame);
 }
 
 void init_cmd_send(struct cmd_send * _c_obj) {
@@ -661,6 +723,15 @@ void init_cmd_info(struct cmd_info * _c_obj) {
 void init_cmd_connected(struct cmd_connected * _c_obj) {
   _c_obj->_tag = (caut_tag8_t) cmd_connected_tag_req;
   /* No initializer for empty field req */
+}
+
+void init_atom_baud(enum atom_baud * _c_obj) {
+  *_c_obj = atom_baud_b9600;
+}
+
+void init_cmd_baud(struct cmd_baud * _c_obj) {
+  _c_obj->_tag = (caut_tag8_t) cmd_baud_tag_req;
+  init_atom_baud(&_c_obj->req);
 }
 
 void init_arr_u8_32(struct arr_u8_32 * _c_obj) {
@@ -702,7 +773,7 @@ void init_sleep_connection(struct sleep_connection * _c_obj) {
 
 void init_res_sleep(struct res_sleep * _c_obj) {
   init_bool(&_c_obj->needs_reset);
-  init_sleep_connection(&_c_obj->connection);
+  init_sleep_connection(&_c_obj->maybe_connection);
 }
 
 void init_cmd_sleep(struct cmd_sleep * _c_obj) {
@@ -778,7 +849,7 @@ enum caut_ord compare_res_poll(struct res_poll const * const _c_a, struct res_po
   enum caut_ord _c_o;
 
   if (caut_ord_eq != (_c_o = compare_bool(&_c_a->needs_reset, &_c_b->needs_reset))) { return _c_o; }
-  if (caut_ord_eq != (_c_o = compare_poll_frame(&_c_a->frame, &_c_b->frame))) { return _c_o; }
+  if (caut_ord_eq != (_c_o = compare_poll_frame(&_c_a->maybe_frame, &_c_b->maybe_frame))) { return _c_o; }
 
   return caut_ord_eq;
 
@@ -879,6 +950,29 @@ enum caut_ord compare_cmd_connected(struct cmd_connected const * const _c_a, str
   return _c_o;
 }
 
+enum caut_ord compare_atom_baud(enum atom_baud const * const _c_a, enum atom_baud const * const _c_b) {
+  return CAUT_ORDER(*_c_a, *_c_b);
+}
+
+enum caut_ord compare_cmd_baud(struct cmd_baud const * const _c_a, struct cmd_baud const * const _c_b) {
+  enum caut_ord _c_o;
+
+  if (caut_ord_eq != (_c_o = CAUT_ORDER(_c_a->_tag, _c_b->_tag))) {
+    return _c_o;
+  }
+
+  switch(_c_a->_tag) {
+  case cmd_baud_tag_req:
+    _c_o = compare_atom_baud(&_c_a->req, &_c_b->req);
+    break;
+  case cmd_baud_tag_res:
+    _c_o = compare_bool(&_c_a->res, &_c_b->res);
+    break;
+  }
+
+  return _c_o;
+}
+
 enum caut_ord compare_arr_u8_32(struct arr_u8_32 const * const _c_a, struct arr_u8_32 const * const _c_b) {
   for (size_t _c_i = 0; _c_i < ARR_LEN(_c_a->elems); _c_i++) {
     const enum caut_ord _c_o = compare_u8(&_c_a->elems[_c_i], &_c_b->elems[_c_i]);
@@ -963,9 +1057,6 @@ enum caut_ord compare_sleep_connection(struct sleep_connection const * const _c_
   case sleep_connection_tag_keep_awake:
     _c_o = caut_ord_eq; /* No comparison for empty field keep_awake */
     break;
-  case sleep_connection_tag_needs_reset:
-    _c_o = caut_ord_eq; /* No comparison for empty field needs_reset */
-    break;
   case sleep_connection_tag_connection:
     _c_o = compare_connection(&_c_a->connection, &_c_b->connection);
     break;
@@ -978,7 +1069,7 @@ enum caut_ord compare_res_sleep(struct res_sleep const * const _c_a, struct res_
   enum caut_ord _c_o;
 
   if (caut_ord_eq != (_c_o = compare_bool(&_c_a->needs_reset, &_c_b->needs_reset))) { return _c_o; }
-  if (caut_ord_eq != (_c_o = compare_sleep_connection(&_c_a->connection, &_c_b->connection))) { return _c_o; }
+  if (caut_ord_eq != (_c_o = compare_sleep_connection(&_c_a->maybe_connection, &_c_b->maybe_connection))) { return _c_o; }
 
   return caut_ord_eq;
 
@@ -1028,6 +1119,9 @@ enum caut_ord compare_cmd(struct cmd const * const _c_a, struct cmd const * cons
     break;
   case cmd_tag_sleep:
     _c_o = compare_cmd_sleep(&_c_a->sleep, &_c_b->sleep);
+    break;
+  case cmd_tag_baud:
+    _c_o = compare_cmd_baud(&_c_a->baud, &_c_b->baud);
     break;
   }
 
