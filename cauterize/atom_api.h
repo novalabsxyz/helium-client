@@ -186,7 +186,7 @@ struct cmd_baud {
 
   union {
     enum atom_baud req;
-    bool res;
+    /* no data for field i"res" with index 1 */
   };
 
 };

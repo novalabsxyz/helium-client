@@ -6,7 +6,7 @@
 #define FSET(FS,IX) ((FS) & (1ull << (IX)))
 
 /* schema hash */
-hashtype_t const SCHEMA_HASH_atom_api = { 0x50,0xBD,0x29,0x1C,0x5B,0x6E,0x00,0x09,0xB8,0xC9,0xD4,0x62,0xB8,0x9F,0xD8,0xB8,0xE9,0xA8,0xB2,0xBD };
+hashtype_t const SCHEMA_HASH_atom_api = { 0xC9,0xF9,0x21,0x9C,0x8F,0x23,0x31,0xAD,0xED,0x6F,0x73,0xB9,0xF7,0xD1,0x9A,0x69,0x98,0x73,0x58,0xD8 };
 
 /* type encoders */
 R encode_res_send(EI * const _c_iter, enum res_send const * const _c_obj) {
@@ -195,7 +195,7 @@ R encode_cmd_baud(EI * const _c_iter, struct cmd_baud const * const _c_obj) {
 
   switch(_c_obj->_tag) {
   case cmd_baud_tag_req: STATUS_CHECK(encode_atom_baud(_c_iter, &_c_obj->req)); break;
-  case cmd_baud_tag_res: STATUS_CHECK(encode_bool(_c_iter, &_c_obj->res)); break;
+  case cmd_baud_tag_res: /* No data for field res with index 1. */ break;
   }
 
   return caut_status_ok;
@@ -525,7 +525,7 @@ R decode_cmd_baud(DI * const _c_iter, struct cmd_baud * const _c_obj) {
 
   switch(_c_obj->_tag) {
   case cmd_baud_tag_req: STATUS_CHECK(decode_atom_baud(_c_iter, &_c_obj->req)); break;
-  case cmd_baud_tag_res: STATUS_CHECK(decode_bool(_c_iter, &_c_obj->res)); break;
+  case cmd_baud_tag_res: /* No data for field i"res" with index 1. */ break;
   }
 
   return caut_status_ok;
@@ -966,7 +966,7 @@ enum caut_ord compare_cmd_baud(struct cmd_baud const * const _c_a, struct cmd_ba
     _c_o = compare_atom_baud(&_c_a->req, &_c_b->req);
     break;
   case cmd_baud_tag_res:
-    _c_o = compare_bool(&_c_a->res, &_c_b->res);
+    _c_o = caut_ord_eq; /* No comparison for empty field res */
     break;
   }
 

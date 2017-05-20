@@ -227,6 +227,7 @@ carbon_baud(struct carbon_ctx * ctx, enum carbon_baud baud)
     enum send_command_status status = send_command(ctx);
     if (send_command_OK != status)
     {
+        printf("POOP %d\n", status);
         return carbon_info_ERR_COMMUNICATION;
     }
 
