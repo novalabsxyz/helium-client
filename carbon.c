@@ -290,35 +290,7 @@ carbon_connect(struct carbon_ctx * ctx, struct connection * connection)
         ctx->txn.cmd.connect.req._tag = req_connect_tag_cold;
     }
 
-    enum send_command_status status = send_command(ctx);
-    if (send_command_OK != status)
-    {
-        return carbon_connect_ERR_COMMUNICATION;
-    }
-
-    const uint32_t wait_us     = 2500;
-    uint32_t       wait_cycles = (100000 / wait_us) * 60; // 60 seconds
-    while (--wait_cycles)
-    {
-        enum carbon_connected_status connected_status = carbon_connected(ctx);
-        switch (connected_status)
-        {
-        case carbon_connected_CONNECTED:
-            return carbon_connect_CONNECTED;
-        case carbon_connected_NOT_CONNECTED:
-            carbon_wait_us(ctx->param, wait_us);
-            break;
-        case carbon_connected_ERR_COMMUNICATION:
-            return carbon_connect_ERR_COMMUNICATION;
-        }
-    }
-
-    if (0 == wait_cycles)
-    {
-        return carbon_connect_ERR_CONNECT_TIMEOUT;
-    }
-
-    return carbon_connect_ERR_COMMUNICATION;
+    return send_command(ctx);
 }
 
 int
