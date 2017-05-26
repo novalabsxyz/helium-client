@@ -1,5 +1,5 @@
 PROJECT=carbon
-WARN = -Wall -Wextra -pedantic
+WARN = -Werror -Wall -Wextra -pedantic
 
 CFLAGS = -g ${WARN} -std=c11 -I. -I./cauterize -D_BSD_SOURCE
 

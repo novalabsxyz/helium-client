@@ -1,23 +1,20 @@
 language: c
+sudo: false
 
 matrix:
   include:
     - compiler: gcc
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-4.9
+          sources: [ 'ubuntu-toolchain-r-test']
+          packages: ['gcc-4.9']
       env: COMPILER=gcc-4.9
+
     - compiler: clang
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.8
-          packages:
-            - clang-3.8
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.8']
+          packages: ['clang-3.8']
       env: COMPILER=clang-3.8
 
 before_install:
