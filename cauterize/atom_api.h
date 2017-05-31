@@ -8,7 +8,7 @@
 #define VERSION_atom_api "1.0.0"
 #define MIN_SIZE_atom_api (1)
 #define MAX_SIZE_atom_api (110)
-#define NUM_TYPES_atom_api (22)
+#define NUM_TYPES_atom_api (20)
 
 /* schema hash */
 extern hashtype_t const SCHEMA_HASH_atom_api;
@@ -19,24 +19,22 @@ enum type_index_atom_api {
   type_index_atom_api_res_info = 1,
   type_index_atom_api_res_connect = 2,
   type_index_atom_api_frame_app = 3,
-  type_index_atom_api_poll_frame = 4,
-  type_index_atom_api_res_poll = 5,
-  type_index_atom_api_cmd_send = 6,
-  type_index_atom_api_cmd_poll = 7,
-  type_index_atom_api_cmd_mac = 8,
-  type_index_atom_api_cmd_info = 9,
-  type_index_atom_api_cmd_connected = 10,
-  type_index_atom_api_atom_baud = 11,
-  type_index_atom_api_cmd_baud = 12,
-  type_index_atom_api_arr_u8_32 = 13,
-  type_index_atom_api_connection = 14,
-  type_index_atom_api_req_connect = 15,
-  type_index_atom_api_cmd_connect = 16,
-  type_index_atom_api_sleep_connection = 17,
-  type_index_atom_api_res_sleep = 18,
-  type_index_atom_api_cmd_sleep = 19,
-  type_index_atom_api_cmd = 20,
-  type_index_atom_api_txn = 21,
+  type_index_atom_api_res_poll = 4,
+  type_index_atom_api_cmd_send = 5,
+  type_index_atom_api_cmd_poll = 6,
+  type_index_atom_api_cmd_mac = 7,
+  type_index_atom_api_cmd_info = 8,
+  type_index_atom_api_cmd_connected = 9,
+  type_index_atom_api_atom_baud = 10,
+  type_index_atom_api_cmd_baud = 11,
+  type_index_atom_api_arr_u8_32 = 12,
+  type_index_atom_api_connection = 13,
+  type_index_atom_api_req_connect = 14,
+  type_index_atom_api_cmd_connect = 15,
+  type_index_atom_api_res_sleep = 16,
+  type_index_atom_api_cmd_sleep = 17,
+  type_index_atom_api_cmd = 18,
+  type_index_atom_api_txn = 19,
 };
 
 /* type definitions */
@@ -69,11 +67,11 @@ struct frame_app {
   uint8_t elems[VECTOR_MAX_LEN_frame_app];
 };
 
-#define UNION_NUM_FIELDS_poll_frame (0x2ull)
-struct poll_frame {
-  enum poll_frame_tag {
-    poll_frame_tag_none = 0,
-    poll_frame_tag_frame = 1,
+#define UNION_NUM_FIELDS_res_poll (0x2ull)
+struct res_poll {
+  enum res_poll_tag {
+    res_poll_tag_none = 0,
+    res_poll_tag_frame = 1,
   } _tag;
 
 
@@ -82,11 +80,6 @@ struct poll_frame {
     struct frame_app frame;
   };
 
-};
-
-struct res_poll {
-  bool needs_reset;
-  struct poll_frame maybe_frame;
 };
 
 #define UNION_NUM_FIELDS_cmd_send (0x2ull)
@@ -242,12 +235,12 @@ struct cmd_connect {
 
 };
 
-#define UNION_NUM_FIELDS_sleep_connection (0x3ull)
-struct sleep_connection {
-  enum sleep_connection_tag {
-    sleep_connection_tag_not_connected = 0,
-    sleep_connection_tag_keep_awake = 1,
-    sleep_connection_tag_connection = 2,
+#define UNION_NUM_FIELDS_res_sleep (0x3ull)
+struct res_sleep {
+  enum res_sleep_tag {
+    res_sleep_tag_not_connected = 0,
+    res_sleep_tag_keep_awake = 1,
+    res_sleep_tag_connection = 2,
   } _tag;
 
 
@@ -257,11 +250,6 @@ struct sleep_connection {
     struct connection connection;
   };
 
-};
-
-struct res_sleep {
-  bool needs_reset;
-  struct sleep_connection maybe_connection;
 };
 
 #define UNION_NUM_FIELDS_cmd_sleep (0x2ull)
@@ -306,6 +294,7 @@ struct cmd {
 
 struct txn {
   uint16_t seq;
+  bool needs_reset;
   struct cmd cmd;
 };
 
@@ -330,11 +319,6 @@ enum caut_status encode_frame_app(struct caut_encode_iter * const _c_iter, struc
 enum caut_status decode_frame_app(struct caut_decode_iter * const _c_iter, struct frame_app * const _c_obj);
 void init_frame_app(struct frame_app * _c_obj);
 enum caut_ord compare_frame_app(struct frame_app const * const _c_a, struct frame_app const * const _c_b);
-
-enum caut_status encode_poll_frame(struct caut_encode_iter * const _c_iter, struct poll_frame const * const _c_obj);
-enum caut_status decode_poll_frame(struct caut_decode_iter * const _c_iter, struct poll_frame * const _c_obj);
-void init_poll_frame(struct poll_frame * _c_obj);
-enum caut_ord compare_poll_frame(struct poll_frame const * const _c_a, struct poll_frame const * const _c_b);
 
 enum caut_status encode_res_poll(struct caut_encode_iter * const _c_iter, struct res_poll const * const _c_obj);
 enum caut_status decode_res_poll(struct caut_decode_iter * const _c_iter, struct res_poll * const _c_obj);
@@ -395,11 +379,6 @@ enum caut_status encode_cmd_connect(struct caut_encode_iter * const _c_iter, str
 enum caut_status decode_cmd_connect(struct caut_decode_iter * const _c_iter, struct cmd_connect * const _c_obj);
 void init_cmd_connect(struct cmd_connect * _c_obj);
 enum caut_ord compare_cmd_connect(struct cmd_connect const * const _c_a, struct cmd_connect const * const _c_b);
-
-enum caut_status encode_sleep_connection(struct caut_encode_iter * const _c_iter, struct sleep_connection const * const _c_obj);
-enum caut_status decode_sleep_connection(struct caut_decode_iter * const _c_iter, struct sleep_connection * const _c_obj);
-void init_sleep_connection(struct sleep_connection * _c_obj);
-enum caut_ord compare_sleep_connection(struct sleep_connection const * const _c_a, struct sleep_connection const * const _c_b);
 
 enum caut_status encode_res_sleep(struct caut_encode_iter * const _c_iter, struct res_sleep const * const _c_obj);
 enum caut_status decode_res_sleep(struct caut_decode_iter * const _c_iter, struct res_sleep * const _c_obj);

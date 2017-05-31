@@ -28,7 +28,6 @@ struct message_atom_api {
     struct res_info msg_res_info;
     enum res_connect msg_res_connect;
     struct frame_app msg_frame_app;
-    struct poll_frame msg_poll_frame;
     struct res_poll msg_res_poll;
     struct cmd_send msg_cmd_send;
     struct cmd_poll msg_cmd_poll;
@@ -41,7 +40,6 @@ struct message_atom_api {
     struct connection msg_connection;
     struct req_connect msg_req_connect;
     struct cmd_connect msg_cmd_connect;
-    struct sleep_connection msg_sleep_connection;
     struct res_sleep msg_res_sleep;
     struct cmd_sleep msg_cmd_sleep;
     struct cmd msg_cmd;

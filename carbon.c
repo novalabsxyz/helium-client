@@ -181,6 +181,8 @@ send_command(struct carbon_ctx * ctx)
         return send_command_ERR_DECODE;
     }
 
+    ctx->needs_reset = ctx->txn.needs_reset;
+
     return send_command_OK;
 }
 
@@ -305,18 +307,16 @@ carbon_sleep(struct carbon_ctx * ctx, struct connection * connection)
         return carbon_sleep_ERR_COMMUNICATION;
     }
 
-    ctx->needs_reset = ctx->txn.cmd.sleep.res.needs_reset;
-
-    switch (ctx->txn.cmd.sleep.res.maybe_connection._tag)
+    switch (ctx->txn.cmd.sleep.res._tag)
     {
-    case sleep_connection_tag_not_connected:
+    case res_sleep_tag_not_connected:
         return carbon_sleep_ERR_NOT_CONNECTED;
-    case sleep_connection_tag_keep_awake:
+    case res_sleep_tag_keep_awake:
         return carbon_sleep_ERR_KEEP_AWAKE;
-    case sleep_connection_tag_connection:
+    case res_sleep_tag_connection:
         if (connection)
         {
-            *connection = ctx->txn.cmd.sleep.res.maybe_connection.connection;
+            *connection = ctx->txn.cmd.sleep.res.connection;
         }
         return carbon_sleep_OK;
     }
@@ -408,15 +408,13 @@ carbon_poll(struct carbon_ctx * ctx,
             return carbon_poll_ERR_COMMUNICATION;
         }
 
-        ctx->needs_reset = ctx->txn.cmd.sleep.res.needs_reset;
-
-        switch (ctx->txn.cmd.poll.res.maybe_frame._tag)
+        switch (ctx->txn.cmd.poll.res._tag)
         {
-        case poll_frame_tag_none:
+        case res_poll_tag_none:
             break;
-        case poll_frame_tag_frame:
+        case res_poll_tag_frame:
         {
-            size_t copylen = ctx->txn.cmd.poll.res.maybe_frame.frame._length;
+            size_t copylen = ctx->txn.cmd.poll.res.frame._length;
             if (copylen > len)
             {
                 copylen = len;
@@ -424,7 +422,7 @@ carbon_poll(struct carbon_ctx * ctx,
             if (data)
             {
                 memcpy(data,
-                       ctx->txn.cmd.poll.res.maybe_frame.frame.elems,
+                       ctx->txn.cmd.poll.res.frame.elems,
                        copylen);
             }
             if (used)
