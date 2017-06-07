@@ -106,7 +106,7 @@ struct cmd_poll {
 
 
   union {
-    /* no data for field i"req" with index 0 */
+    struct frame_app req;
     struct res_poll res;
   };
 

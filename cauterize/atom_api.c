@@ -6,7 +6,7 @@
 #define FSET(FS,IX) ((FS) & (1ull << (IX)))
 
 /* schema hash */
-hashtype_t const SCHEMA_HASH_atom_api = { 0x80,0x3B,0xE3,0x8B,0x6D,0x3A,0x7F,0x09,0x82,0x83,0xC0,0xA8,0x8E,0x3F,0x58,0xE1,0xC3,0xE4,0x13,0x6C };
+hashtype_t const SCHEMA_HASH_atom_api = { 0x6B,0xAC,0x35,0x5A,0x43,0x72,0xF1,0x12,0x43,0x32,0x1D,0xF6,0xD8,0xC9,0x8B,0xEA,0xE3,0x8B,0xC0,0xE2 };
 
 /* type encoders */
 R encode_res_send(EI * const _c_iter, enum res_send const * const _c_obj) {
@@ -105,7 +105,7 @@ R encode_cmd_poll(EI * const _c_iter, struct cmd_poll const * const _c_obj) {
   STATUS_CHECK(encode_tag8(_c_iter, &_temp_tag));
 
   switch(_c_obj->_tag) {
-  case cmd_poll_tag_req: /* No data for field req with index 0. */ break;
+  case cmd_poll_tag_req: STATUS_CHECK(encode_frame_app(_c_iter, &_c_obj->req)); break;
   case cmd_poll_tag_res: STATUS_CHECK(encode_res_poll(_c_iter, &_c_obj->res)); break;
   }
 
@@ -419,7 +419,7 @@ R decode_cmd_poll(DI * const _c_iter, struct cmd_poll * const _c_obj) {
   }
 
   switch(_c_obj->_tag) {
-  case cmd_poll_tag_req: /* No data for field i"req" with index 0. */ break;
+  case cmd_poll_tag_req: STATUS_CHECK(decode_frame_app(_c_iter, &_c_obj->req)); break;
   case cmd_poll_tag_res: STATUS_CHECK(decode_res_poll(_c_iter, &_c_obj->res)); break;
   }
 
@@ -676,7 +676,7 @@ void init_cmd_send(struct cmd_send * _c_obj) {
 
 void init_cmd_poll(struct cmd_poll * _c_obj) {
   _c_obj->_tag = (caut_tag8_t) cmd_poll_tag_req;
-  /* No initializer for empty field req */
+  init_frame_app(&_c_obj->req);
 }
 
 void init_cmd_mac(struct cmd_mac * _c_obj) {
@@ -838,7 +838,7 @@ enum caut_ord compare_cmd_poll(struct cmd_poll const * const _c_a, struct cmd_po
 
   switch(_c_a->_tag) {
   case cmd_poll_tag_req:
-    _c_o = caut_ord_eq; /* No comparison for empty field req */
+    _c_o = compare_frame_app(&_c_a->req, &_c_b->req);
     break;
   case cmd_poll_tag_res:
     _c_o = compare_res_poll(&_c_a->res, &_c_b->res);

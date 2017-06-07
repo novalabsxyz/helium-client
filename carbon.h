@@ -35,7 +35,6 @@ struct carbon_info
 struct carbon_ctx
 {
     void * param;
-    bool   needs_reset;
 
     /* Internal state */
     uint16_t   txn_seq;
@@ -45,6 +44,9 @@ struct carbon_ctx
 
 void
 carbon_init(struct carbon_ctx * ctx, void * param);
+
+bool
+carbon_needs_reset(struct carbon_ctx * ctx);
 
 int
 carbon_baud(struct carbon_ctx * ctx, enum carbon_baud baud);

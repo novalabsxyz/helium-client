@@ -181,8 +181,6 @@ send_command(struct carbon_ctx * ctx)
         return send_command_ERR_DECODE;
     }
 
-    ctx->needs_reset = ctx->txn.needs_reset;
-
     return send_command_OK;
 }
 
@@ -194,6 +192,12 @@ carbon_init(struct carbon_ctx * ctx, void * param)
     {
         ctx->param = param;
     }
+}
+
+bool
+carbon_needs_reset(struct carbon_ctx * ctx)
+{
+    return ctx->txn.needs_reset;
 }
 
 int
@@ -229,7 +233,6 @@ carbon_baud(struct carbon_ctx * ctx, enum carbon_baud baud)
     enum send_command_status status = send_command(ctx);
     if (send_command_OK != status)
     {
-        printf("POOP %d\n", status);
         return carbon_info_ERR_COMMUNICATION;
     }
 
@@ -421,9 +424,7 @@ carbon_poll(struct carbon_ctx * ctx,
             }
             if (data)
             {
-                memcpy(data,
-                       ctx->txn.cmd.poll.res.frame.elems,
-                       copylen);
+                memcpy(data, ctx->txn.cmd.poll.res.frame.elems, copylen);
             }
             if (used)
             {
@@ -432,7 +433,8 @@ carbon_poll(struct carbon_ctx * ctx,
             return carbon_poll_OK_DATA;
         }
         }
-        if (retries > 0) {
+        if (retries > 0)
+        {
             carbon_wait_us(ctx->param, CARBON_POLL_WAIT_US);
         }
     }
@@ -477,9 +479,11 @@ carbon_channel_create(struct carbon_ctx * ctx,
     // Now receive
     frame                               = ctx->buf;
     size_t                  used        = 0;
-    enum carbon_poll_status poll_status =
-        carbon_poll(ctx, frame, CARBON_MAX_DATA_SIZE, &used,
-                    CARBON_POLL_RETRIES_60S);
+    enum carbon_poll_status poll_status = carbon_poll(ctx,
+                                                      frame,
+                                                      CARBON_MAX_DATA_SIZE,
+                                                      &used,
+                                                      CARBON_POLL_RETRIES_60S);
 
     switch (poll_status)
     {
@@ -552,9 +556,11 @@ carbon_channel_send(struct carbon_ctx * ctx,
     // Now receive
     frame                               = ctx->buf;
     size_t                  used        = 0;
-    enum carbon_poll_status poll_status =
-        carbon_poll(ctx, frame, CARBON_MAX_DATA_SIZE, &used,
-                    CARBON_POLL_RETRIES_60S);
+    enum carbon_poll_status poll_status = carbon_poll(ctx,
+                                                      frame,
+                                                      CARBON_MAX_DATA_SIZE,
+                                                      &used,
+                                                      CARBON_POLL_RETRIES_60S);
 
     switch (poll_status)
     {
