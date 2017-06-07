@@ -1,4 +1,4 @@
-#include "carbon.h"
+#include "helium-client.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,24 +18,24 @@ enum decode_state
 // 1 second timeout
 #define SERIAL_WAIT_TIMEOUT 2000
 static inline bool
-_wait_for_byte(struct carbon_ctx * ctx, size_t timeout)
+_wait_for_byte(struct helium_ctx * ctx, size_t timeout)
 {
     while (timeout--)
     {
-        if (carbon_serial_readable(ctx->param))
+        if (helium_serial_readable(ctx->param))
         {
             return true;
         }
         else
         {
-            carbon_wait_us(ctx->param, 500);
+            helium_wait_us(ctx->param, 500);
         }
     }
     return false;
 }
 
 static size_t
-_read_frame(struct carbon_ctx * ctx, uint8_t * frame, size_t len)
+_read_frame(struct helium_ctx * ctx, uint8_t * frame, size_t len)
 {
     enum decode_state state            = sof;
     size_t            payload_size     = 0;
@@ -44,7 +44,7 @@ _read_frame(struct carbon_ctx * ctx, uint8_t * frame, size_t len)
     while (_wait_for_byte(ctx, SERIAL_WAIT_TIMEOUT))
     {
         uint8_t ch;
-        if (!carbon_serial_getc(ctx->param, &ch))
+        if (!helium_serial_getc(ctx->param, &ch))
         {
             // Error reading
             return -3;
@@ -105,7 +105,7 @@ _read_frame(struct carbon_ctx * ctx, uint8_t * frame, size_t len)
 }
 
 static size_t
-_write_frame(struct carbon_ctx * ctx, uint8_t * frame, size_t len)
+_write_frame(struct helium_ctx * ctx, uint8_t * frame, size_t len)
 {
     if (len == 0)
     {
@@ -114,7 +114,7 @@ _write_frame(struct carbon_ctx * ctx, uint8_t * frame, size_t len)
 
     size_t written = 0;
 #define CHECK_WRITE(ch, inc)                                                   \
-    if (!carbon_serial_putc(ctx->param, (ch)))                                 \
+    if (!helium_serial_putc(ctx->param, (ch)))                                 \
     {                                                                          \
         return -1;                                                             \
     }                                                                          \
@@ -149,7 +149,7 @@ enum send_command_status
 };
 
 static enum send_command_status
-send_command(struct carbon_ctx * ctx)
+send_command(struct helium_ctx * ctx)
 {
     uint16_t seq = ctx->txn_seq++;
 
@@ -185,7 +185,7 @@ send_command(struct carbon_ctx * ctx)
 }
 
 void
-carbon_init(struct carbon_ctx * ctx, void * param)
+helium_init(struct helium_ctx * ctx, void * param)
 {
     memset(ctx, 0, sizeof(*ctx));
     if (NULL != param)
@@ -195,13 +195,13 @@ carbon_init(struct carbon_ctx * ctx, void * param)
 }
 
 bool
-carbon_needs_reset(struct carbon_ctx * ctx)
+helium_needs_reset(struct helium_ctx * ctx)
 {
     return ctx->txn.needs_reset;
 }
 
 int
-carbon_baud(struct carbon_ctx * ctx, enum carbon_baud baud)
+helium_baud(struct helium_ctx * ctx, enum helium_baud baud)
 {
     ctx->txn.cmd._tag      = cmd_tag_baud;
     ctx->txn.cmd.baud._tag = cmd_baud_tag_req;
@@ -209,22 +209,22 @@ carbon_baud(struct carbon_ctx * ctx, enum carbon_baud baud)
     enum atom_baud atom_baud = atom_baud_b9600;
     switch (baud)
     {
-    case carbon_baud_b115200:
+    case helium_baud_b115200:
         atom_baud = atom_baud_b115200;
         break;
-    case carbon_baud_b57600:
+    case helium_baud_b57600:
         atom_baud = atom_baud_b57600;
         break;
-    case carbon_baud_b38400:
+    case helium_baud_b38400:
         atom_baud = atom_baud_b38400;
         break;
-    case carbon_baud_b19200:
+    case helium_baud_b19200:
         atom_baud = atom_baud_b19200;
         break;
-    case carbon_baud_b14400:
+    case helium_baud_b14400:
         atom_baud = atom_baud_b14400;
         break;
-    case carbon_baud_b9600:
+    case helium_baud_b9600:
         atom_baud = atom_baud_b9600;
         break;
     }
@@ -233,14 +233,14 @@ carbon_baud(struct carbon_ctx * ctx, enum carbon_baud baud)
     enum send_command_status status = send_command(ctx);
     if (send_command_OK != status)
     {
-        return carbon_info_ERR_COMMUNICATION;
+        return helium_info_ERR_COMMUNICATION;
     }
 
-    return carbon_info_OK;
+    return helium_info_OK;
 }
 
 int
-carbon_info(struct carbon_ctx * ctx, struct carbon_info * info)
+helium_info(struct helium_ctx * ctx, struct helium_info * info)
 {
     ctx->txn.cmd._tag      = cmd_tag_info;
     ctx->txn.cmd.info._tag = cmd_info_tag_req;
@@ -248,7 +248,7 @@ carbon_info(struct carbon_ctx * ctx, struct carbon_info * info)
     enum send_command_status status = send_command(ctx);
     if (send_command_OK != status)
     {
-        return carbon_info_ERR_COMMUNICATION;
+        return helium_info_ERR_COMMUNICATION;
     }
 
     info->mac         = ctx->txn.cmd.info.res.mac;
@@ -257,11 +257,11 @@ carbon_info(struct carbon_ctx * ctx, struct carbon_info * info)
     info->fw_version  = ctx->txn.cmd.info.res.fw_version;
     info->radio_count = ctx->txn.cmd.info.res.radio_count;
 
-    return carbon_info_OK;
+    return helium_info_OK;
 }
 
 int
-carbon_connected(struct carbon_ctx * ctx)
+helium_connected(struct helium_ctx * ctx)
 {
     ctx->txn.cmd._tag           = cmd_tag_connected;
     ctx->txn.cmd.connected._tag = cmd_connected_tag_req;
@@ -269,18 +269,18 @@ carbon_connected(struct carbon_ctx * ctx)
     enum send_command_status status = send_command(ctx);
     if (status != send_command_OK)
     {
-        return carbon_connected_ERR_COMMUNICATION;
+        return helium_connected_ERR_COMMUNICATION;
     }
 
     if (!ctx->txn.cmd.connected.res)
     {
-        return carbon_connected_NOT_CONNECTED;
+        return helium_connected_NOT_CONNECTED;
     }
-    return carbon_connected_CONNECTED;
+    return helium_connected_CONNECTED;
 }
 
 int
-carbon_connect(struct carbon_ctx * ctx, struct connection * connection)
+helium_connect(struct helium_ctx * ctx, struct connection * connection)
 {
     ctx->txn.cmd._tag         = cmd_tag_connect;
     ctx->txn.cmd.connect._tag = cmd_connect_tag_req;
@@ -299,7 +299,7 @@ carbon_connect(struct carbon_ctx * ctx, struct connection * connection)
 }
 
 int
-carbon_sleep(struct carbon_ctx * ctx, struct connection * connection)
+helium_sleep(struct helium_ctx * ctx, struct connection * connection)
 {
     ctx->txn.cmd._tag       = cmd_tag_sleep;
     ctx->txn.cmd.sleep._tag = cmd_sleep_tag_req;
@@ -307,37 +307,37 @@ carbon_sleep(struct carbon_ctx * ctx, struct connection * connection)
     enum send_command_status status = send_command(ctx);
     if (send_command_OK != status)
     {
-        return carbon_sleep_ERR_COMMUNICATION;
+        return helium_sleep_ERR_COMMUNICATION;
     }
 
     switch (ctx->txn.cmd.sleep.res._tag)
     {
     case res_sleep_tag_not_connected:
-        return carbon_sleep_ERR_NOT_CONNECTED;
+        return helium_sleep_ERR_NOT_CONNECTED;
     case res_sleep_tag_keep_awake:
-        return carbon_sleep_ERR_KEEP_AWAKE;
+        return helium_sleep_ERR_KEEP_AWAKE;
     case res_sleep_tag_connection:
         if (connection)
         {
             *connection = ctx->txn.cmd.sleep.res.connection;
         }
-        return carbon_sleep_OK;
+        return helium_sleep_OK;
     }
-    return carbon_sleep_ERR_COMMUNICATION;
+    return helium_sleep_ERR_COMMUNICATION;
 }
 
 
-enum carbon_send_status
+enum helium_send_status
 {
-    carbon_send_OK,
+    helium_send_OK,
     /* Some other Atom module condition caused us to fail. */
-    carbon_send_ERR_NOT_CONNECTED,
-    carbon_send_ERR_DROPPED,
-    carbon_send_ERR_COMMUNICATION,
+    helium_send_ERR_NOT_CONNECTED,
+    helium_send_ERR_DROPPED,
+    helium_send_ERR_COMMUNICATION,
 };
 
-static enum carbon_send_status
-carbon_send(struct carbon_ctx * ctx, void const * data, size_t len)
+static enum helium_send_status
+helium_send(struct helium_ctx * ctx, void const * data, size_t len)
 {
     ctx->txn.cmd._tag      = cmd_tag_send;
     ctx->txn.cmd.send._tag = cmd_send_tag_req;
@@ -362,17 +362,17 @@ carbon_send(struct carbon_ctx * ctx, void const * data, size_t len)
         enum send_command_status status = send_command(ctx);
         if (send_command_OK != status)
         {
-            return carbon_send_ERR_COMMUNICATION;
+            return helium_send_ERR_COMMUNICATION;
         }
 
         switch (ctx->txn.cmd.send.res)
         {
         case res_send_ok:
-            return carbon_send_OK;
+            return helium_send_OK;
         case res_send_err_not_connected:
-            return carbon_send_ERR_NOT_CONNECTED;
+            return helium_send_ERR_NOT_CONNECTED;
         case res_send_err_dropped:
-            return carbon_send_ERR_DROPPED;
+            return helium_send_ERR_DROPPED;
         case res_send_err_nack:
         case res_send_err_channel_access:
             // Loop back around to retry
@@ -380,21 +380,21 @@ carbon_send(struct carbon_ctx * ctx, void const * data, size_t len)
             break;
         }
     }
-    return carbon_send_ERR_COMMUNICATION;
+    return helium_send_ERR_COMMUNICATION;
 }
 
-enum carbon_poll_status
+enum helium_poll_status
 {
-    carbon_poll_OK_DATA,
-    carbon_poll_OK_NO_DATA,
-    carbon_poll_ERR_COMMUNICATION,
+    helium_poll_OK_DATA,
+    helium_poll_OK_NO_DATA,
+    helium_poll_ERR_COMMUNICATION,
 };
 
-#define CARBON_POLL_WAIT_US 500000
-#define CARBON_POLL_RETRIES_60S ((1000000 / CARBON_POLL_WAIT_US) * 60)
+#define HELIUM_POLL_WAIT_US 500000
+#define HELIUM_POLL_RETRIES_60S ((1000000 / HELIUM_POLL_WAIT_US) * 60)
 
-static enum carbon_poll_status
-carbon_poll(struct carbon_ctx * ctx,
+static enum helium_poll_status
+helium_poll(struct helium_ctx * ctx,
             void *              data,
             const size_t        len,
             size_t *            used,
@@ -408,7 +408,7 @@ carbon_poll(struct carbon_ctx * ctx,
         enum send_command_status status = send_command(ctx);
         if (send_command_OK != status)
         {
-            return carbon_poll_ERR_COMMUNICATION;
+            return helium_poll_ERR_COMMUNICATION;
         }
 
         switch (ctx->txn.cmd.poll.res._tag)
@@ -430,16 +430,16 @@ carbon_poll(struct carbon_ctx * ctx,
             {
                 *used = copylen;
             }
-            return carbon_poll_OK_DATA;
+            return helium_poll_OK_DATA;
         }
         }
         if (retries > 0)
         {
-            carbon_wait_us(ctx->param, CARBON_POLL_WAIT_US);
+            helium_wait_us(ctx->param, HELIUM_POLL_WAIT_US);
         }
     }
 
-    return carbon_poll_OK_NO_DATA;
+    return helium_poll_OK_NO_DATA;
 }
 
 
@@ -448,57 +448,57 @@ carbon_poll(struct carbon_ctx * ctx,
 #define CHANNEL_CREATE_FAILED 0x8e
 
 int
-carbon_channel_create(struct carbon_ctx * ctx,
+helium_channel_create(struct helium_ctx * ctx,
                       const char *        name,
                       size_t              len,
                       uint8_t *           channel_id)
 {
     uint8_t * frame = ctx->buf;
-    if (len > CARBON_MAX_CHANNEL_NAME_SIZE)
+    if (len > HELIUM_MAX_CHANNEL_NAME_SIZE)
     {
-        len = CARBON_MAX_CHANNEL_NAME_SIZE;
+        len = HELIUM_MAX_CHANNEL_NAME_SIZE;
     }
 
     *frame++ = CHANNEL_CREATE;
     memcpy(frame, name, len);
     frame += len;
 
-    enum carbon_send_status status = carbon_send(ctx, ctx->buf, frame - ctx->buf);
+    enum helium_send_status status = helium_send(ctx, ctx->buf, frame - ctx->buf);
     switch (status)
     {
-    case carbon_send_OK:
+    case helium_send_OK:
         break; // successfully transmitted
-    case carbon_send_ERR_NOT_CONNECTED:
-        return carbon_channel_create_ERR_NOT_CONNECTED;
-    case carbon_send_ERR_DROPPED:
-        return carbon_channel_create_ERR_DROPPED;
-    case carbon_send_ERR_COMMUNICATION:
-        return carbon_channel_create_ERR_COMMUNICATION;
+    case helium_send_ERR_NOT_CONNECTED:
+        return helium_channel_create_ERR_NOT_CONNECTED;
+    case helium_send_ERR_DROPPED:
+        return helium_channel_create_ERR_DROPPED;
+    case helium_send_ERR_COMMUNICATION:
+        return helium_channel_create_ERR_COMMUNICATION;
     }
 
     // Now receive
     frame                               = ctx->buf;
     size_t                  used        = 0;
-    enum carbon_poll_status poll_status = carbon_poll(ctx,
+    enum helium_poll_status poll_status = helium_poll(ctx,
                                                       frame,
-                                                      CARBON_MAX_DATA_SIZE,
+                                                      HELIUM_MAX_DATA_SIZE,
                                                       &used,
-                                                      CARBON_POLL_RETRIES_60S);
+                                                      HELIUM_POLL_RETRIES_60S);
 
     switch (poll_status)
     {
-    case carbon_poll_OK_DATA:
+    case helium_poll_OK_DATA:
         break; // received some data
-    case carbon_poll_OK_NO_DATA:
-        return carbon_channel_create_ERR_TIMEOUT;
-    case carbon_poll_ERR_COMMUNICATION:
-        return carbon_channel_create_ERR_COMMUNICATION;
+    case helium_poll_OK_NO_DATA:
+        return helium_channel_create_ERR_TIMEOUT;
+    case helium_poll_ERR_COMMUNICATION:
+        return helium_channel_create_ERR_COMMUNICATION;
     }
 
-    // poll_status == carbon_poll_OK_DATA
+    // poll_status == helium_poll_OK_DATA
     if (used < 1)
     {
-        return carbon_channel_create_ERR_COMMUNICATION;
+        return helium_channel_create_ERR_COMMUNICATION;
     }
 
     switch (frame[0])
@@ -506,15 +506,15 @@ carbon_channel_create(struct carbon_ctx * ctx,
     case CHANNEL_CREATED:
         if (used != 2)
         {
-            return carbon_channel_create_ERR_COMMUNICATION;
+            return helium_channel_create_ERR_COMMUNICATION;
         }
         *channel_id = frame[1];
-        return carbon_channel_create_OK;
+        return helium_channel_create_OK;
     case CHANNEL_CREATE_FAILED:
-        return carbon_channel_create_ERR_FAILED;
+        return helium_channel_create_ERR_FAILED;
     }
 
-    return carbon_channel_create_ERR_COMMUNICATION;
+    return helium_channel_create_ERR_COMMUNICATION;
 }
 
 #define CHANNEL_SEND 0x8c
@@ -522,16 +522,16 @@ carbon_channel_create(struct carbon_ctx * ctx,
 #define CHANNEL_NOT_FOUND 0x8f
 
 int
-carbon_channel_send(struct carbon_ctx * ctx,
+helium_channel_send(struct helium_ctx * ctx,
                     uint8_t             channel_id,
                     void const *        data,
                     size_t              len,
                     uint8_t *           result)
 {
     uint8_t * frame = ctx->buf;
-    if (len > CARBON_MAX_DATA_SIZE)
+    if (len > HELIUM_MAX_DATA_SIZE)
     {
-        len = CARBON_MAX_DATA_SIZE;
+        len = HELIUM_MAX_DATA_SIZE;
     }
 
     *frame++ = CHANNEL_SEND;
@@ -540,58 +540,58 @@ carbon_channel_send(struct carbon_ctx * ctx,
     memcpy(frame, data, len);
     frame += len;
 
-    enum carbon_send_status status = carbon_send(ctx, ctx->buf, frame - ctx->buf);
+    enum helium_send_status status = helium_send(ctx, ctx->buf, frame - ctx->buf);
     switch (status)
     {
-    case carbon_send_OK:
+    case helium_send_OK:
         break; // successfully transmitted
-    case carbon_send_ERR_NOT_CONNECTED:
-        return carbon_channel_send_ERR_NOT_CONNECTED;
-    case carbon_send_ERR_DROPPED:
-        return carbon_channel_send_ERR_DROPPED;
-    case carbon_send_ERR_COMMUNICATION:
-        return carbon_channel_send_ERR_COMMUNICATION;
+    case helium_send_ERR_NOT_CONNECTED:
+        return helium_channel_send_ERR_NOT_CONNECTED;
+    case helium_send_ERR_DROPPED:
+        return helium_channel_send_ERR_DROPPED;
+    case helium_send_ERR_COMMUNICATION:
+        return helium_channel_send_ERR_COMMUNICATION;
     }
 
     // Now receive
     frame                               = ctx->buf;
     size_t                  used        = 0;
-    enum carbon_poll_status poll_status = carbon_poll(ctx,
+    enum helium_poll_status poll_status = helium_poll(ctx,
                                                       frame,
-                                                      CARBON_MAX_DATA_SIZE,
+                                                      HELIUM_MAX_DATA_SIZE,
                                                       &used,
-                                                      CARBON_POLL_RETRIES_60S);
+                                                      HELIUM_POLL_RETRIES_60S);
 
     switch (poll_status)
     {
-    case carbon_poll_OK_DATA:
+    case helium_poll_OK_DATA:
         break; // received some data
-    case carbon_poll_OK_NO_DATA:
-        return carbon_channel_send_ERR_TIMEOUT;
-    case carbon_poll_ERR_COMMUNICATION:
-        return carbon_channel_send_ERR_COMMUNICATION;
+    case helium_poll_OK_NO_DATA:
+        return helium_channel_send_ERR_TIMEOUT;
+    case helium_poll_ERR_COMMUNICATION:
+        return helium_channel_send_ERR_COMMUNICATION;
     }
 
-    // poll_status == carbon_poll_OK_DATA
+    // poll_status == helium_poll_OK_DATA
     if (used < 1)
     {
-        return carbon_channel_send_ERR_COMMUNICATION;
+        return helium_channel_send_ERR_COMMUNICATION;
     }
     switch (frame[0])
     {
     case CHANNEL_SEND_RESULT:
         if (used != 2)
         {
-            return carbon_channel_send_ERR_COMMUNICATION;
+            return helium_channel_send_ERR_COMMUNICATION;
         }
         if (result)
         {
             *result = frame[1];
         }
-        return carbon_channel_send_OK;
+        return helium_channel_send_OK;
     case CHANNEL_NOT_FOUND:
-        return carbon_channel_send_ERR_NOT_FOUND;
+        return helium_channel_send_ERR_NOT_FOUND;
     }
 
-    return carbon_channel_send_ERR_COMMUNICATION;
+    return helium_channel_send_ERR_COMMUNICATION;
 }
