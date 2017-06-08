@@ -455,7 +455,7 @@ int
 helium_channel_create(struct helium_ctx * ctx,
                       const char *        name,
                       size_t              len,
-                      uint8_t *           channel_id)
+                      int8_t *            channel_id)
 {
     uint8_t * frame       = ctx->buf;
     uint8_t   channel_ref = ctx->channel_ref++;
@@ -519,7 +519,7 @@ helium_channel_send(struct helium_ctx * ctx,
                     uint8_t             channel_id,
                     void const *        data,
                     size_t              len,
-                    uint8_t *           result)
+                    int8_t *            result)
 {
     uint8_t * frame       = ctx->buf;
     uint8_t   channel_ref = ctx->channel_ref++;
@@ -571,7 +571,7 @@ helium_channel_send(struct helium_ctx * ctx,
     {
         if (result)
         {
-            *result = frame[1];
+            *result = frame[2];
         }
         return helium_channel_send_OK;
     }

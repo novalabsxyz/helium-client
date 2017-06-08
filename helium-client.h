@@ -68,13 +68,13 @@ int
 helium_channel_create(struct helium_ctx * ctx,
                       const char *        name,
                       size_t              len,
-                      uint8_t *           channel_id);
+                      int8_t *            channel_id);
 int
 helium_channel_send(struct helium_ctx * ctx,
                     uint8_t             channel_id,
                     void const *        data,
                     size_t              len,
-                    uint8_t *           result);
+                    int8_t *            result);
 
 extern bool
 helium_serial_readable(void * param);
