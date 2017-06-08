@@ -1,7 +1,7 @@
 PROJECT=helium-client
 WARN = -Werror -Wall -Wextra -pedantic
 
-CFLAGS = -g ${WARN} -std=c11 -I. -I./cauterize -D_BSD_SOURCE
+CFLAGS = -g ${WARN} -std=c11 -I. -I./cauterize -D_BSD_SOURCE -D_DEFAULT_SOURCE
 
 OBJS = helium-client.o \
 	cauterize/atom_api.o \
