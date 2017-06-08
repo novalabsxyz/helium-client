@@ -400,8 +400,13 @@ helium_poll(struct helium_ctx * ctx,
             size_t *            used,
             uint32_t            retries)
 {
-    ctx->txn.cmd._tag      = cmd_tag_poll;
-    ctx->txn.cmd.poll._tag = cmd_poll_tag_req;
+    ctx->txn.cmd._tag             = cmd_tag_poll;
+    ctx->txn.cmd.poll._tag        = cmd_poll_tag_req;
+    ctx->txn.cmd.poll.req._length = *used;
+    if (*used > 0)
+    {
+        memcpy(ctx->txn.cmd.poll.req.elems, data, *used);
+    }
 
     while (retries-- > 0)
     {
@@ -443,9 +448,8 @@ helium_poll(struct helium_ctx * ctx,
 }
 
 
-#define CHANNEL_CREATE 0x8b
-#define CHANNEL_CREATED 0x8d
-#define CHANNEL_CREATE_FAILED 0x8e
+#define CHANNEL_CREATE 0x01
+#define CHANNEL_CREATE_RESULT 0x02
 
 int
 helium_channel_create(struct helium_ctx * ctx,
@@ -453,13 +457,15 @@ helium_channel_create(struct helium_ctx * ctx,
                       size_t              len,
                       uint8_t *           channel_id)
 {
-    uint8_t * frame = ctx->buf;
+    uint8_t * frame       = ctx->buf;
+    uint8_t   channel_ref = ctx->channel_ref++;
     if (len > HELIUM_MAX_CHANNEL_NAME_SIZE)
     {
         len = HELIUM_MAX_CHANNEL_NAME_SIZE;
     }
 
     *frame++ = CHANNEL_CREATE;
+    *frame++ = channel_ref;
     memcpy(frame, name, len);
     frame += len;
 
@@ -478,7 +484,7 @@ helium_channel_create(struct helium_ctx * ctx,
 
     // Now receive
     frame                               = ctx->buf;
-    size_t                  used        = 0;
+    size_t                  used        = 2;
     enum helium_poll_status poll_status = helium_poll(ctx,
                                                       frame,
                                                       HELIUM_MAX_DATA_SIZE,
@@ -496,30 +502,17 @@ helium_channel_create(struct helium_ctx * ctx,
     }
 
     // poll_status == helium_poll_OK_DATA
-    if (used < 1)
+    if (used == 3 && frame[0] == CHANNEL_CREATE_RESULT && frame[1] == channel_ref)
     {
-        return helium_channel_create_ERR_COMMUNICATION;
-    }
-
-    switch (frame[0])
-    {
-    case CHANNEL_CREATED:
-        if (used != 2)
-        {
-            return helium_channel_create_ERR_COMMUNICATION;
-        }
-        *channel_id = frame[1];
+        *channel_id = frame[2];
         return helium_channel_create_OK;
-    case CHANNEL_CREATE_FAILED:
-        return helium_channel_create_ERR_FAILED;
     }
 
     return helium_channel_create_ERR_COMMUNICATION;
 }
 
-#define CHANNEL_SEND 0x8c
-#define CHANNEL_SEND_RESULT 0x90
-#define CHANNEL_NOT_FOUND 0x8f
+#define CHANNEL_SEND 0x03
+#define CHANNEL_SEND_RESULT 0x04
 
 int
 helium_channel_send(struct helium_ctx * ctx,
@@ -528,15 +521,16 @@ helium_channel_send(struct helium_ctx * ctx,
                     size_t              len,
                     uint8_t *           result)
 {
-    uint8_t * frame = ctx->buf;
+    uint8_t * frame       = ctx->buf;
+    uint8_t   channel_ref = ctx->channel_ref++;
     if (len > HELIUM_MAX_DATA_SIZE)
     {
         len = HELIUM_MAX_DATA_SIZE;
     }
 
     *frame++ = CHANNEL_SEND;
+    *frame++ = channel_ref;
     *frame++ = channel_id;
-    *frame++ = 0;
     memcpy(frame, data, len);
     frame += len;
 
@@ -555,7 +549,7 @@ helium_channel_send(struct helium_ctx * ctx,
 
     // Now receive
     frame                               = ctx->buf;
-    size_t                  used        = 0;
+    size_t                  used        = 2;
     enum helium_poll_status poll_status = helium_poll(ctx,
                                                       frame,
                                                       HELIUM_MAX_DATA_SIZE,
@@ -573,24 +567,13 @@ helium_channel_send(struct helium_ctx * ctx,
     }
 
     // poll_status == helium_poll_OK_DATA
-    if (used < 1)
+    if (used == 3 && frame[0] == CHANNEL_SEND_RESULT && frame[1] == channel_ref)
     {
-        return helium_channel_send_ERR_COMMUNICATION;
-    }
-    switch (frame[0])
-    {
-    case CHANNEL_SEND_RESULT:
-        if (used != 2)
-        {
-            return helium_channel_send_ERR_COMMUNICATION;
-        }
         if (result)
         {
             *result = frame[1];
         }
         return helium_channel_send_OK;
-    case CHANNEL_NOT_FOUND:
-        return helium_channel_send_ERR_NOT_FOUND;
     }
 
     return helium_channel_send_ERR_COMMUNICATION;

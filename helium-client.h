@@ -37,6 +37,7 @@ struct helium_ctx
     void * param;
 
     /* Internal state */
+    uint8_t    channel_ref;
     uint16_t   txn_seq;
     struct txn txn;
     uint8_t    buf[HELIUM_MAX_DATA_SIZE];
