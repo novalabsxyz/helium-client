@@ -12,6 +12,9 @@ extern "C" {
 
 #define HELIUM_MAX_DATA_SIZE (VECTOR_MAX_LEN_frame_app)
 #define HELIUM_MAX_CHANNEL_NAME_SIZE (VECTOR_MAX_LEN_frame_app - 1)
+#define HELIUM_POLL_WAIT_US 500000
+#define HELIUM_POLL_RETRIES_5S ((1000000 / HELIUM_POLL_WAIT_US) * 5)
+#define HELIUM_POLL_RETRIES_60S ((1000000 / HELIUM_POLL_WAIT_US) * 60)
 
 enum helium_baud
 {
@@ -59,22 +62,48 @@ int
 helium_connected(struct helium_ctx * ctx);
 
 int
-helium_connect(struct helium_ctx * ctx, struct connection * connection);
+helium_connect(struct helium_ctx * ctx,
+               struct connection * connection,
+               int32_t             retries);
 
 int
 helium_sleep(struct helium_ctx * ctx, struct connection * connection);
+
+
+int
+helium_poll(struct helium_ctx * ctx,
+            void *              data,
+            const size_t        len,
+            size_t *            used,
+            uint32_t            retries);
+
+//
+// Channel functions
+//
+
+int
+helium_channel_poll(struct helium_ctx * ctx,
+                    uint16_t            token,
+                    int8_t *            result,
+                    uint32_t            retries);
 
 int
 helium_channel_create(struct helium_ctx * ctx,
                       const char *        name,
                       size_t              len,
-                      int8_t *            channel_id);
+                      uint16_t *          token);
+
 int
 helium_channel_send(struct helium_ctx * ctx,
                     uint8_t             channel_id,
                     void const *        data,
                     size_t              len,
-                    int8_t *            result);
+                    uint16_t *          token);
+
+
+//
+// Externally required functions
+//
 
 extern bool
 helium_serial_readable(void * param);

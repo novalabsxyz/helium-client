@@ -280,7 +280,9 @@ helium_connected(struct helium_ctx * ctx)
 }
 
 int
-helium_connect(struct helium_ctx * ctx, struct connection * connection)
+helium_connect(struct helium_ctx * ctx,
+               struct connection * connection,
+               int32_t             retries)
 {
     ctx->txn.cmd._tag         = cmd_tag_connect;
     ctx->txn.cmd.connect._tag = cmd_connect_tag_req;
@@ -295,7 +297,36 @@ helium_connect(struct helium_ctx * ctx, struct connection * connection)
         ctx->txn.cmd.connect.req._tag = req_connect_tag_cold;
     }
 
-    return send_command(ctx);
+    enum send_command_status status = send_command(ctx);
+    if (send_command_OK != status)
+    {
+        return helium_connect_ERR_COMMUNICATION;
+    }
+
+    while (retries-- > 0)
+    {
+        enum helium_connected_status connected_status = helium_connected(ctx);
+        switch (connected_status)
+        {
+        case helium_connected_CONNECTED:
+            return helium_connect_CONNECTED;
+        case helium_connected_NOT_CONNECTED:
+            if (retries > 0)
+            {
+                helium_wait_us(ctx->param, HELIUM_POLL_WAIT_US);
+            }
+            break;
+        case helium_connected_ERR_COMMUNICATION:
+            return helium_connect_ERR_COMMUNICATION;
+        }
+    }
+
+    if (retries <= 0)
+    {
+        return helium_connect_NOT_CONNECTED;
+    }
+
+    return helium_connect_ERR_COMMUNICATION;
 }
 
 int
@@ -383,17 +414,7 @@ helium_send(struct helium_ctx * ctx, void const * data, size_t len)
     return helium_send_ERR_COMMUNICATION;
 }
 
-enum helium_poll_status
-{
-    helium_poll_OK_DATA,
-    helium_poll_OK_NO_DATA,
-    helium_poll_ERR_COMMUNICATION,
-};
-
-#define HELIUM_POLL_WAIT_US 500000
-#define HELIUM_POLL_RETRIES_60S ((1000000 / HELIUM_POLL_WAIT_US) * 60)
-
-static enum helium_poll_status
+int
 helium_poll(struct helium_ctx * ctx,
             void *              data,
             const size_t        len,
@@ -431,10 +452,7 @@ helium_poll(struct helium_ctx * ctx,
             {
                 memcpy(data, ctx->txn.cmd.poll.res.frame.elems, copylen);
             }
-            if (used)
-            {
-                *used = copylen;
-            }
+            *used = copylen;
             return helium_poll_OK_DATA;
         }
         }
@@ -447,6 +465,26 @@ helium_poll(struct helium_ctx * ctx,
     return helium_poll_OK_NO_DATA;
 }
 
+int
+helium_channel_poll(struct helium_ctx * ctx,
+                    uint16_t            token,
+                    int8_t *            result,
+                    uint32_t            retries)
+{
+    uint8_t * frame = ctx->buf;
+    size_t    used  = 2;
+    memcpy(frame, &token, sizeof(token));
+
+    enum helium_poll_status poll_status =
+        helium_poll(ctx, frame, HELIUM_MAX_DATA_SIZE, &used, retries);
+
+    if (poll_status == helium_poll_OK_DATA && result) {
+        *result = frame[2];
+    }
+
+    return poll_status;
+}
+
 
 #define CHANNEL_CREATE 0x01
 #define CHANNEL_CREATE_RESULT 0x02
@@ -455,7 +493,7 @@ int
 helium_channel_create(struct helium_ctx * ctx,
                       const char *        name,
                       size_t              len,
-                      int8_t *            channel_id)
+                      uint16_t *          token)
 {
     uint8_t * frame       = ctx->buf;
     uint8_t   channel_ref = ctx->channel_ref++;
@@ -473,7 +511,11 @@ helium_channel_create(struct helium_ctx * ctx,
     switch (status)
     {
     case helium_send_OK:
-        break; // successfully transmitted
+        if (token)
+        {
+            *token = (CHANNEL_CREATE_RESULT << 8) | channel_ref;
+        }
+        return helium_channel_create_OK;
     case helium_send_ERR_NOT_CONNECTED:
         return helium_channel_create_ERR_NOT_CONNECTED;
     case helium_send_ERR_DROPPED:
@@ -482,34 +524,9 @@ helium_channel_create(struct helium_ctx * ctx,
         return helium_channel_create_ERR_COMMUNICATION;
     }
 
-    // Now receive
-    frame                               = ctx->buf;
-    size_t                  used        = 2;
-    enum helium_poll_status poll_status = helium_poll(ctx,
-                                                      frame,
-                                                      HELIUM_MAX_DATA_SIZE,
-                                                      &used,
-                                                      HELIUM_POLL_RETRIES_60S);
-
-    switch (poll_status)
-    {
-    case helium_poll_OK_DATA:
-        break; // received some data
-    case helium_poll_OK_NO_DATA:
-        return helium_channel_create_ERR_TIMEOUT;
-    case helium_poll_ERR_COMMUNICATION:
-        return helium_channel_create_ERR_COMMUNICATION;
-    }
-
-    // poll_status == helium_poll_OK_DATA
-    if (used == 3 && frame[0] == CHANNEL_CREATE_RESULT && frame[1] == channel_ref)
-    {
-        *channel_id = frame[2];
-        return helium_channel_create_OK;
-    }
-
     return helium_channel_create_ERR_COMMUNICATION;
 }
+
 
 #define CHANNEL_SEND 0x03
 #define CHANNEL_SEND_RESULT 0x04
@@ -519,7 +536,7 @@ helium_channel_send(struct helium_ctx * ctx,
                     uint8_t             channel_id,
                     void const *        data,
                     size_t              len,
-                    int8_t *            result)
+                    uint16_t *          token)
 {
     uint8_t * frame       = ctx->buf;
     uint8_t   channel_ref = ctx->channel_ref++;
@@ -538,42 +555,17 @@ helium_channel_send(struct helium_ctx * ctx,
     switch (status)
     {
     case helium_send_OK:
-        break; // successfully transmitted
+        if (token)
+        {
+            *token = (CHANNEL_CREATE_RESULT << 8) | channel_ref;
+        }
+        return helium_channel_send_OK;
     case helium_send_ERR_NOT_CONNECTED:
         return helium_channel_send_ERR_NOT_CONNECTED;
     case helium_send_ERR_DROPPED:
         return helium_channel_send_ERR_DROPPED;
     case helium_send_ERR_COMMUNICATION:
         return helium_channel_send_ERR_COMMUNICATION;
-    }
-
-    // Now receive
-    frame                               = ctx->buf;
-    size_t                  used        = 2;
-    enum helium_poll_status poll_status = helium_poll(ctx,
-                                                      frame,
-                                                      HELIUM_MAX_DATA_SIZE,
-                                                      &used,
-                                                      HELIUM_POLL_RETRIES_60S);
-
-    switch (poll_status)
-    {
-    case helium_poll_OK_DATA:
-        break; // received some data
-    case helium_poll_OK_NO_DATA:
-        return helium_channel_send_ERR_TIMEOUT;
-    case helium_poll_ERR_COMMUNICATION:
-        return helium_channel_send_ERR_COMMUNICATION;
-    }
-
-    // poll_status == helium_poll_OK_DATA
-    if (used == 3 && frame[0] == CHANNEL_SEND_RESULT && frame[1] == channel_ref)
-    {
-        if (result)
-        {
-            *result = frame[2];
-        }
-        return helium_channel_send_OK;
     }
 
     return helium_channel_send_ERR_COMMUNICATION;
