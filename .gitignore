@@ -33,3 +33,4 @@ atom
 # Debug files
 *.dSYM/
 *.su
+TAGS
