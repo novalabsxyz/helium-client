@@ -10,7 +10,6 @@ enum helium_status
     helium_status_ERR_TIMEOUT,
     helium_status_ERR_DROPPED,
     helium_status_ERR_KEEP_AWAKE,
-    helium_status_ERR_FAILED,
     helium_status_ERR_NOT_FOUND,
 };
 
@@ -52,7 +51,6 @@ enum helium_poll_status
 enum helium_channel_create_status
 {
     helium_channel_create_OK                = helium_status_OK,
-    helium_channel_create_ERR_FAILED        = helium_status_ERR_FAILED,
     helium_channel_create_ERR_NOT_CONNECTED = helium_status_ERR_NOT_CONNECTED,
     helium_channel_create_ERR_DROPPED       = helium_status_ERR_DROPPED,
     helium_channel_create_ERR_COMMUNICATION = helium_status_ERR_COMMUNICATION,
