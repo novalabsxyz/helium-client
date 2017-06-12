@@ -1,3 +1,8 @@
+/*
+ * Copyright 2017, Helium Systems, Inc.
+ * All Rights Reserved. See LICENCE.txt for license information
+ */
+
 #include "helium-client.h"
 #include <inttypes.h>
 #include <stdio.h>
