@@ -483,8 +483,38 @@ helium_channel_poll(struct helium_ctx * ctx,
     enum helium_poll_status poll_status =
         helium_poll(ctx, frame, HELIUM_MAX_DATA_SIZE, &used, retries);
 
-    if (poll_status == helium_poll_OK_DATA && result) {
+    if (poll_status == helium_poll_OK_DATA && result)
+    {
         *result = frame[2];
+    }
+
+    return poll_status;
+}
+
+#define CHANNEL_DATA 0x05
+
+int
+helium_channel_poll_data(struct helium_ctx * ctx,
+                         uint8_t             channel_id,
+                         void *              data,
+                         size_t              len,
+                         size_t *            used,
+                         uint32_t            retries)
+{
+    uint8_t * frame = ctx->buf;
+    *frame++        = CHANNEL_DATA;
+    *frame++        = channel_id;
+    *used           = 2;
+
+    int poll_status = helium_poll(ctx, ctx->buf, len, used, retries);
+    if (helium_poll_OK_DATA == poll_status)
+    {
+        size_t copylen = *used - 2;
+        if (copylen > len)
+        {
+            copylen = len;
+        }
+        memcpy(data, ctx->buf + 2, copylen);
     }
 
     return poll_status;

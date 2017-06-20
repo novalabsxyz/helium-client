@@ -87,6 +87,14 @@ helium_poll(struct helium_ctx * ctx,
 //
 
 int
+helium_channel_poll_data(struct helium_ctx * ctx,
+                         uint8_t             channel_id,
+                         void *              data,
+                         size_t              len,
+                         size_t *            used,
+                         uint32_t            retries);
+
+int
 helium_channel_poll(struct helium_ctx * ctx,
                     uint16_t            token,
                     int8_t *            result,
