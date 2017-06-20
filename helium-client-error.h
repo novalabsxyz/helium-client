@@ -12,10 +12,8 @@ enum helium_status
     helium_status_OK_NO_DATA,
     helium_status_ERR_COMMUNICATION,
     helium_status_ERR_NOT_CONNECTED,
-    helium_status_ERR_TIMEOUT,
     helium_status_ERR_DROPPED,
     helium_status_ERR_KEEP_AWAKE,
-    helium_status_ERR_NOT_FOUND,
 };
 
 enum helium_info_status
@@ -64,7 +62,6 @@ enum helium_channel_create_status
 enum helium_channel_send_status
 {
     helium_channel_send_OK                = helium_status_OK,
-    helium_channel_send_ERR_NOT_FOUND     = helium_status_ERR_NOT_FOUND,
     helium_channel_send_ERR_NOT_CONNECTED = helium_status_ERR_NOT_CONNECTED,
     helium_channel_send_ERR_DROPPED       = helium_status_ERR_DROPPED,
     helium_channel_send_ERR_COMMUNICATION = helium_status_ERR_COMMUNICATION,
