@@ -446,6 +446,8 @@ helium_poll(struct helium_ctx * ctx,
         {
         case res_poll_tag_none:
             break;
+        case res_poll_tag_log:
+            break;
         case res_poll_tag_frame:
         {
             size_t copylen = ctx->txn.cmd.poll.res.frame._length;

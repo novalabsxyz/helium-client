@@ -6,7 +6,7 @@
 #define FSET(FS,IX) ((FS) & (1ull << (IX)))
 
 /* schema hash */
-hashtype_t const SCHEMA_HASH_atom_api = { 0x6B,0xAC,0x35,0x5A,0x43,0x72,0xF1,0x12,0x43,0x32,0x1D,0xF6,0xD8,0xC9,0x8B,0xEA,0xE3,0x8B,0xC0,0xE2 };
+hashtype_t const SCHEMA_HASH_atom_api = { 0x00,0x4B,0x26,0xCB,0x70,0x35,0xDB,0x7A,0xB7,0x6E,0xDD,0xD2,0xC6,0xBB,0x65,0x74,0x7C,0xD7,0x9B,0x2F };
 
 /* type encoders */
 R encode_res_send(EI * const _c_iter, enum res_send const * const _c_obj) {
@@ -47,6 +47,20 @@ R encode_res_connect(EI * const _c_iter, enum res_connect const * const _c_obj) 
   return caut_status_ok;
 }
 
+R encode_req_logging(EI * const _c_iter, enum req_logging const * const _c_obj) {
+  caut_tag8_t _c_tag;
+
+  if (ENUM_MAX_VAL_req_logging < *_c_obj) {
+    return caut_status_enumeration_out_of_range;
+  }
+
+  _c_tag = (caut_tag8_t)*_c_obj;
+
+  STATUS_CHECK(encode_tag8(_c_iter, &_c_tag));
+
+  return caut_status_ok;
+}
+
 R encode_frame_app(EI * const _c_iter, struct frame_app const * const _c_obj) {
   if (_c_obj->_length > VECTOR_MAX_LEN_frame_app) {
     return caut_status_invalid_length;
@@ -73,6 +87,7 @@ R encode_res_poll(EI * const _c_iter, struct res_poll const * const _c_obj) {
   switch(_c_obj->_tag) {
   case res_poll_tag_none: /* No data for field none with index 0. */ break;
   case res_poll_tag_frame: STATUS_CHECK(encode_frame_app(_c_iter, &_c_obj->frame)); break;
+  case res_poll_tag_log: STATUS_CHECK(encode_frame_app(_c_iter, &_c_obj->log)); break;
   }
 
   return caut_status_ok;
@@ -124,6 +139,23 @@ R encode_cmd_mac(EI * const _c_iter, struct cmd_mac const * const _c_obj) {
   switch(_c_obj->_tag) {
   case cmd_mac_tag_req: /* No data for field req with index 0. */ break;
   case cmd_mac_tag_res: STATUS_CHECK(encode_u64(_c_iter, &_c_obj->res)); break;
+  }
+
+  return caut_status_ok;
+}
+
+R encode_cmd_logging(EI * const _c_iter, struct cmd_logging const * const _c_obj) {
+  caut_tag8_t _temp_tag = (caut_tag8_t)_c_obj->_tag;
+
+  if (_temp_tag >= UNION_NUM_FIELDS_cmd_logging) {
+    return caut_status_invalid_tag;
+  }
+
+  STATUS_CHECK(encode_tag8(_c_iter, &_temp_tag));
+
+  switch(_c_obj->_tag) {
+  case cmd_logging_tag_req: STATUS_CHECK(encode_req_logging(_c_iter, &_c_obj->req)); break;
+  case cmd_logging_tag_res: /* No data for field res with index 1. */ break;
   }
 
   return caut_status_ok;
@@ -306,6 +338,7 @@ R encode_cmd(EI * const _c_iter, struct cmd const * const _c_obj) {
   case cmd_tag_poll: STATUS_CHECK(encode_cmd_poll(_c_iter, &_c_obj->poll)); break;
   case cmd_tag_sleep: STATUS_CHECK(encode_cmd_sleep(_c_iter, &_c_obj->sleep)); break;
   case cmd_tag_baud: STATUS_CHECK(encode_cmd_baud(_c_iter, &_c_obj->baud)); break;
+  case cmd_tag_logging: STATUS_CHECK(encode_cmd_logging(_c_iter, &_c_obj->logging)); break;
   }
 
   return caut_status_ok;
@@ -358,6 +391,19 @@ R decode_res_connect(DI * const _c_iter, enum res_connect * const _c_obj) {
   return caut_status_ok;
 }
 
+R decode_req_logging(DI * const _c_iter, enum req_logging * const _c_obj) {
+  caut_tag8_t _c_tag;
+  STATUS_CHECK(decode_tag8(_c_iter, &_c_tag));
+
+  if (ENUM_MAX_VAL_req_logging < _c_tag) {
+    return caut_status_enumeration_out_of_range;
+  }
+
+  *_c_obj = (enum req_logging)_c_tag;
+
+  return caut_status_ok;
+}
+
 R decode_frame_app(DI * const _c_iter, struct frame_app * const _c_obj) {
   STATUS_CHECK(decode_tag8(_c_iter, &_c_obj->_length));
 
@@ -385,6 +431,7 @@ R decode_res_poll(DI * const _c_iter, struct res_poll * const _c_obj) {
   switch(_c_obj->_tag) {
   case res_poll_tag_none: /* No data for field i"none" with index 0. */ break;
   case res_poll_tag_frame: STATUS_CHECK(decode_frame_app(_c_iter, &_c_obj->frame)); break;
+  case res_poll_tag_log: STATUS_CHECK(decode_frame_app(_c_iter, &_c_obj->log)); break;
   }
 
   return caut_status_ok;
@@ -439,6 +486,24 @@ R decode_cmd_mac(DI * const _c_iter, struct cmd_mac * const _c_obj) {
   switch(_c_obj->_tag) {
   case cmd_mac_tag_req: /* No data for field i"req" with index 0. */ break;
   case cmd_mac_tag_res: STATUS_CHECK(decode_u64(_c_iter, &_c_obj->res)); break;
+  }
+
+  return caut_status_ok;
+}
+
+R decode_cmd_logging(DI * const _c_iter, struct cmd_logging * const _c_obj) {
+  caut_tag8_t _temp_tag;
+  STATUS_CHECK(decode_tag8(_c_iter, &_temp_tag));
+
+  if (_temp_tag >= UNION_NUM_FIELDS_cmd_logging) {
+    return caut_status_invalid_tag;
+  } else {
+    _c_obj->_tag = (enum cmd_logging_tag)_temp_tag;
+  }
+
+  switch(_c_obj->_tag) {
+  case cmd_logging_tag_req: STATUS_CHECK(decode_req_logging(_c_iter, &_c_obj->req)); break;
+  case cmd_logging_tag_res: /* No data for field i"res" with index 1. */ break;
   }
 
   return caut_status_ok;
@@ -628,6 +693,7 @@ R decode_cmd(DI * const _c_iter, struct cmd * const _c_obj) {
   case cmd_tag_poll: STATUS_CHECK(decode_cmd_poll(_c_iter, &_c_obj->poll)); break;
   case cmd_tag_sleep: STATUS_CHECK(decode_cmd_sleep(_c_iter, &_c_obj->sleep)); break;
   case cmd_tag_baud: STATUS_CHECK(decode_cmd_baud(_c_iter, &_c_obj->baud)); break;
+  case cmd_tag_logging: STATUS_CHECK(decode_cmd_logging(_c_iter, &_c_obj->logging)); break;
   }
 
   return caut_status_ok;
@@ -660,6 +726,10 @@ void init_res_connect(enum res_connect * _c_obj) {
   *_c_obj = res_connect_ok;
 }
 
+void init_req_logging(enum req_logging * _c_obj) {
+  *_c_obj = req_logging_enable;
+}
+
 void init_frame_app(struct frame_app * _c_obj) {
   _c_obj->_length = 0;
 }
@@ -682,6 +752,11 @@ void init_cmd_poll(struct cmd_poll * _c_obj) {
 void init_cmd_mac(struct cmd_mac * _c_obj) {
   _c_obj->_tag = (caut_tag8_t) cmd_mac_tag_req;
   /* No initializer for empty field req */
+}
+
+void init_cmd_logging(struct cmd_logging * _c_obj) {
+  _c_obj->_tag = (caut_tag8_t) cmd_logging_tag_req;
+  init_req_logging(&_c_obj->req);
 }
 
 void init_cmd_info(struct cmd_info * _c_obj) {
@@ -780,6 +855,10 @@ enum caut_ord compare_res_connect(enum res_connect const * const _c_a, enum res_
   return CAUT_ORDER(*_c_a, *_c_b);
 }
 
+enum caut_ord compare_req_logging(enum req_logging const * const _c_a, enum req_logging const * const _c_b) {
+  return CAUT_ORDER(*_c_a, *_c_b);
+}
+
 enum caut_ord compare_frame_app(struct frame_app const * const _c_a, struct frame_app const * const _c_b) {
   for (size_t _c_i = 0; _c_i < _c_a->_length && _c_i < _c_b->_length ; _c_i++) {
     const enum caut_ord _c_o = compare_u8(&_c_a->elems[_c_i], &_c_b->elems[_c_i]);
@@ -804,6 +883,9 @@ enum caut_ord compare_res_poll(struct res_poll const * const _c_a, struct res_po
     break;
   case res_poll_tag_frame:
     _c_o = compare_frame_app(&_c_a->frame, &_c_b->frame);
+    break;
+  case res_poll_tag_log:
+    _c_o = compare_frame_app(&_c_a->log, &_c_b->log);
     break;
   }
 
@@ -861,6 +943,25 @@ enum caut_ord compare_cmd_mac(struct cmd_mac const * const _c_a, struct cmd_mac 
     break;
   case cmd_mac_tag_res:
     _c_o = compare_u64(&_c_a->res, &_c_b->res);
+    break;
+  }
+
+  return _c_o;
+}
+
+enum caut_ord compare_cmd_logging(struct cmd_logging const * const _c_a, struct cmd_logging const * const _c_b) {
+  enum caut_ord _c_o;
+
+  if (caut_ord_eq != (_c_o = CAUT_ORDER(_c_a->_tag, _c_b->_tag))) {
+    return _c_o;
+  }
+
+  switch(_c_a->_tag) {
+  case cmd_logging_tag_req:
+    _c_o = compare_req_logging(&_c_a->req, &_c_b->req);
+    break;
+  case cmd_logging_tag_res:
+    _c_o = caut_ord_eq; /* No comparison for empty field res */
     break;
   }
 
@@ -1067,6 +1168,9 @@ enum caut_ord compare_cmd(struct cmd const * const _c_a, struct cmd const * cons
     break;
   case cmd_tag_baud:
     _c_o = compare_cmd_baud(&_c_a->baud, &_c_b->baud);
+    break;
+  case cmd_tag_logging:
+    _c_o = compare_cmd_logging(&_c_a->logging, &_c_b->logging);
     break;
   }
 

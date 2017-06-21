@@ -27,11 +27,13 @@ struct message_atom_api {
     enum res_send msg_res_send;
     struct res_info msg_res_info;
     enum res_connect msg_res_connect;
+    enum req_logging msg_req_logging;
     struct frame_app msg_frame_app;
     struct res_poll msg_res_poll;
     struct cmd_send msg_cmd_send;
     struct cmd_poll msg_cmd_poll;
     struct cmd_mac msg_cmd_mac;
+    struct cmd_logging msg_cmd_logging;
     struct cmd_info msg_cmd_info;
     struct cmd_connected msg_cmd_connected;
     enum atom_baud msg_atom_baud;

@@ -8,7 +8,7 @@
 #define VERSION_atom_api "1.0.0"
 #define MIN_SIZE_atom_api (1)
 #define MAX_SIZE_atom_api (110)
-#define NUM_TYPES_atom_api (20)
+#define NUM_TYPES_atom_api (22)
 
 /* schema hash */
 extern hashtype_t const SCHEMA_HASH_atom_api;
@@ -18,23 +18,25 @@ enum type_index_atom_api {
   type_index_atom_api_res_send = 0,
   type_index_atom_api_res_info = 1,
   type_index_atom_api_res_connect = 2,
-  type_index_atom_api_frame_app = 3,
-  type_index_atom_api_res_poll = 4,
-  type_index_atom_api_cmd_send = 5,
-  type_index_atom_api_cmd_poll = 6,
-  type_index_atom_api_cmd_mac = 7,
-  type_index_atom_api_cmd_info = 8,
-  type_index_atom_api_cmd_connected = 9,
-  type_index_atom_api_atom_baud = 10,
-  type_index_atom_api_cmd_baud = 11,
-  type_index_atom_api_arr_u8_32 = 12,
-  type_index_atom_api_connection = 13,
-  type_index_atom_api_req_connect = 14,
-  type_index_atom_api_cmd_connect = 15,
-  type_index_atom_api_res_sleep = 16,
-  type_index_atom_api_cmd_sleep = 17,
-  type_index_atom_api_cmd = 18,
-  type_index_atom_api_txn = 19,
+  type_index_atom_api_req_logging = 3,
+  type_index_atom_api_frame_app = 4,
+  type_index_atom_api_res_poll = 5,
+  type_index_atom_api_cmd_send = 6,
+  type_index_atom_api_cmd_poll = 7,
+  type_index_atom_api_cmd_mac = 8,
+  type_index_atom_api_cmd_logging = 9,
+  type_index_atom_api_cmd_info = 10,
+  type_index_atom_api_cmd_connected = 11,
+  type_index_atom_api_atom_baud = 12,
+  type_index_atom_api_cmd_baud = 13,
+  type_index_atom_api_arr_u8_32 = 14,
+  type_index_atom_api_connection = 15,
+  type_index_atom_api_req_connect = 16,
+  type_index_atom_api_cmd_connect = 17,
+  type_index_atom_api_res_sleep = 18,
+  type_index_atom_api_cmd_sleep = 19,
+  type_index_atom_api_cmd = 20,
+  type_index_atom_api_txn = 21,
 };
 
 /* type definitions */
@@ -61,23 +63,31 @@ enum res_connect {
   res_connect_err_fallback_to_slow_connect = 1,
 };
 
+#define ENUM_MAX_VAL_req_logging (req_logging_disable)
+enum req_logging {
+  req_logging_enable = 0,
+  req_logging_disable = 1,
+};
+
 #define VECTOR_MAX_LEN_frame_app (103)
 struct frame_app {
   caut_tag8_t _length;
   uint8_t elems[VECTOR_MAX_LEN_frame_app];
 };
 
-#define UNION_NUM_FIELDS_res_poll (0x2ull)
+#define UNION_NUM_FIELDS_res_poll (0x3ull)
 struct res_poll {
   enum res_poll_tag {
     res_poll_tag_none = 0,
     res_poll_tag_frame = 1,
+    res_poll_tag_log = 2,
   } _tag;
 
 
   union {
     /* no data for field i"none" with index 0 */
     struct frame_app frame;
+    struct frame_app log;
   };
 
 };
@@ -123,6 +133,21 @@ struct cmd_mac {
   union {
     /* no data for field i"req" with index 0 */
     uint64_t res;
+  };
+
+};
+
+#define UNION_NUM_FIELDS_cmd_logging (0x2ull)
+struct cmd_logging {
+  enum cmd_logging_tag {
+    cmd_logging_tag_req = 0,
+    cmd_logging_tag_res = 1,
+  } _tag;
+
+
+  union {
+    enum req_logging req;
+    /* no data for field i"res" with index 1 */
   };
 
 };
@@ -267,7 +292,7 @@ struct cmd_sleep {
 
 };
 
-#define UNION_NUM_FIELDS_cmd (0x7ull)
+#define UNION_NUM_FIELDS_cmd (0x8ull)
 struct cmd {
   enum cmd_tag {
     cmd_tag_info = 0,
@@ -277,6 +302,7 @@ struct cmd {
     cmd_tag_poll = 4,
     cmd_tag_sleep = 5,
     cmd_tag_baud = 6,
+    cmd_tag_logging = 7,
   } _tag;
 
 
@@ -288,6 +314,7 @@ struct cmd {
     struct cmd_poll poll;
     struct cmd_sleep sleep;
     struct cmd_baud baud;
+    struct cmd_logging logging;
   };
 
 };
@@ -315,6 +342,11 @@ enum caut_status decode_res_connect(struct caut_decode_iter * const _c_iter, enu
 void init_res_connect(enum res_connect * _c_obj);
 enum caut_ord compare_res_connect(enum res_connect const * const _c_a, enum res_connect const * const _c_b);
 
+enum caut_status encode_req_logging(struct caut_encode_iter * const _c_iter, enum req_logging const * const _c_obj);
+enum caut_status decode_req_logging(struct caut_decode_iter * const _c_iter, enum req_logging * const _c_obj);
+void init_req_logging(enum req_logging * _c_obj);
+enum caut_ord compare_req_logging(enum req_logging const * const _c_a, enum req_logging const * const _c_b);
+
 enum caut_status encode_frame_app(struct caut_encode_iter * const _c_iter, struct frame_app const * const _c_obj);
 enum caut_status decode_frame_app(struct caut_decode_iter * const _c_iter, struct frame_app * const _c_obj);
 void init_frame_app(struct frame_app * _c_obj);
@@ -339,6 +371,11 @@ enum caut_status encode_cmd_mac(struct caut_encode_iter * const _c_iter, struct 
 enum caut_status decode_cmd_mac(struct caut_decode_iter * const _c_iter, struct cmd_mac * const _c_obj);
 void init_cmd_mac(struct cmd_mac * _c_obj);
 enum caut_ord compare_cmd_mac(struct cmd_mac const * const _c_a, struct cmd_mac const * const _c_b);
+
+enum caut_status encode_cmd_logging(struct caut_encode_iter * const _c_iter, struct cmd_logging const * const _c_obj);
+enum caut_status decode_cmd_logging(struct caut_decode_iter * const _c_iter, struct cmd_logging * const _c_obj);
+void init_cmd_logging(struct cmd_logging * _c_obj);
+enum caut_ord compare_cmd_logging(struct cmd_logging const * const _c_a, struct cmd_logging const * const _c_b);
 
 enum caut_status encode_cmd_info(struct caut_encode_iter * const _c_iter, struct cmd_info const * const _c_obj);
 enum caut_status decode_cmd_info(struct caut_decode_iter * const _c_iter, struct cmd_info * const _c_obj);
