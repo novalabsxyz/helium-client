@@ -550,7 +550,7 @@ helium_channel_create(struct helium_ctx * ctx,
     case helium_send_OK:
         if (token)
         {
-            *token = (CHANNEL_CREATE_RESULT << 8) | channel_ref;
+            *token = (channel_ref << 8) |  CHANNEL_CREATE_RESULT;
         }
         return helium_channel_create_OK;
     case helium_send_ERR_NOT_CONNECTED:
