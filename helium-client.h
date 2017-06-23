@@ -76,11 +76,7 @@ helium_sleep(struct helium_ctx * ctx, struct connection * connection);
 
 
 int
-helium_poll(struct helium_ctx * ctx,
-            void *              data,
-            const size_t        len,
-            size_t *            used,
-            uint32_t            retries);
+helium_poll(struct helium_ctx * ctx, void * data, const size_t len, size_t * used);
 
 //
 // Channel functions
@@ -95,10 +91,10 @@ helium_channel_poll_data(struct helium_ctx * ctx,
                          uint32_t            retries);
 
 int
-helium_channel_poll(struct helium_ctx * ctx,
-                    uint16_t            token,
-                    int8_t *            result,
-                    uint32_t            retries);
+helium_channel_poll_result(struct helium_ctx * ctx,
+                           uint16_t            token,
+                           int8_t *            result,
+                           uint32_t            retries);
 
 int
 helium_channel_create(struct helium_ctx * ctx,

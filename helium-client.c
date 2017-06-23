@@ -173,6 +173,8 @@ send_command(struct helium_ctx * ctx)
         return send_command_ERR_COMMUNICATION;
     }
 
+    memset(ctx->buf, 0xFE, sizeof(ctx->buf));
+
     len = _read_frame(ctx, ctx->buf, sizeof(ctx->buf));
     if ((int)len <= 0)
     {
@@ -390,41 +392,29 @@ helium_send(struct helium_ctx * ctx, void const * data, size_t len)
     }
     ctx->txn.cmd.send.req._length = copylen;
 
-    // Atom already retries a number of times itself. This additional
-    // retry count covers the application level errors.
-    uint8_t retries = 3;
-    while (retries-- > 0)
+    enum send_command_status status = send_command(ctx);
+    if (send_command_OK != status)
     {
-        enum send_command_status status = send_command(ctx);
-        if (send_command_OK != status)
-        {
-            return helium_send_ERR_COMMUNICATION;
-        }
-
-        switch (ctx->txn.cmd.send.res)
-        {
-        case res_send_ok:
-            return helium_send_OK;
-        case res_send_err_not_connected:
-            return helium_send_ERR_NOT_CONNECTED;
-        case res_send_err_dropped:
-            return helium_send_ERR_DROPPED;
-        case res_send_err_nack:
-        case res_send_err_channel_access:
-            // Loop back around to retry
-            // No need to delay here since serial comms will add enough overhead
-            break;
-        }
+        return helium_send_ERR_COMMUNICATION;
     }
+
+    switch (ctx->txn.cmd.send.res)
+    {
+    case res_send_ok:
+        return helium_send_OK;
+    case res_send_err_not_connected:
+        return helium_send_ERR_NOT_CONNECTED;
+    case res_send_err_dropped:
+    case res_send_err_nack:
+    case res_send_err_channel_access:
+        return helium_send_ERR_DROPPED;
+    }
+
     return helium_send_ERR_COMMUNICATION;
 }
 
 int
-helium_poll(struct helium_ctx * ctx,
-            void *              data,
-            const size_t        len,
-            size_t *            used,
-            uint32_t            retries)
+helium_poll(struct helium_ctx * ctx, void * data, const size_t len, size_t * used)
 {
     ctx->txn.cmd._tag             = cmd_tag_poll;
     ctx->txn.cmd.poll._tag        = cmd_poll_tag_req;
@@ -434,38 +424,96 @@ helium_poll(struct helium_ctx * ctx,
         memcpy(ctx->txn.cmd.poll.req.elems, data, *used);
     }
 
+    enum send_command_status status = send_command(ctx);
+    if (send_command_OK != status)
+    {
+        return helium_poll_ERR_COMMUNICATION;
+    }
+
+    switch (ctx->txn.cmd.poll.res._tag)
+    {
+    case res_poll_tag_none:
+        return helium_poll_OK_NO_DATA;
+    case res_poll_tag_log:
+        return helium_poll_OK_NO_DATA;
+    case res_poll_tag_frame:
+    {
+        size_t copylen = ctx->txn.cmd.poll.res.frame._length;
+        if (copylen > len)
+        {
+            copylen = len;
+        }
+        if (data)
+        {
+            memcpy(data, ctx->txn.cmd.poll.res.frame.elems, copylen);
+        }
+        *used = copylen;
+        return helium_poll_OK_DATA;
+    }
+    }
+
+    return helium_poll_ERR_COMMUNICATION;
+}
+
+static __inline uint16_t
+_mk_token(uint8_t frame_id, uint8_t channel_ref)
+{
+    return channel_ref << 8 | frame_id;
+}
+
+static __inline uint8_t
+_token_frame_id(uint16_t token)
+{
+    return token & 0xFF;
+}
+
+static __inline uint8_t
+_token_frame_ref(uint16_t token)
+{
+    return token >> 8 & 0xFF;
+}
+
+static int
+helium_channel_poll_token(struct helium_ctx * ctx,
+                          uint16_t            token,
+                          void *              data,
+                          size_t              len,
+                          size_t *            used,
+                          uint32_t            retries)
+{
     while (retries-- > 0)
     {
-        enum send_command_status status = send_command(ctx);
-        if (send_command_OK != status)
-        {
-            return helium_poll_ERR_COMMUNICATION;
-        }
+        uint8_t * frame     = ctx->buf;
+        size_t    poll_used = 2;
+        *frame++            = _token_frame_id(token);
+        *frame++            = _token_frame_ref(token);
 
-        switch (ctx->txn.cmd.poll.res._tag)
+        enum helium_poll_status poll_status =
+            helium_poll(ctx, ctx->buf, sizeof(ctx->buf), &poll_used);
+        switch (poll_status)
         {
-        case res_poll_tag_none:
-            break;
-        case res_poll_tag_log:
-            break;
-        case res_poll_tag_frame:
+        case helium_poll_OK_DATA:
         {
-            size_t copylen = ctx->txn.cmd.poll.res.frame._length;
+            size_t copylen = poll_used - 2;
             if (copylen > len)
             {
                 copylen = len;
             }
-            if (data)
+            memcpy(data, ctx->buf + 2, copylen);
+            if (used)
             {
-                memcpy(data, ctx->txn.cmd.poll.res.frame.elems, copylen);
+                *used = copylen;
             }
-            *used = copylen;
             return helium_poll_OK_DATA;
         }
-        }
-        if (retries > 0)
-        {
-            helium_wait_us(ctx->param, HELIUM_POLL_WAIT_US);
+        case helium_poll_OK_NO_DATA:
+            if (retries > 0)
+            {
+                helium_wait_us(ctx->param, HELIUM_POLL_WAIT_US);
+            }
+            break;
+        case helium_poll_ERR_COMMUNICATION:
+            return helium_poll_ERR_COMMUNICATION;
         }
     }
 
@@ -473,24 +521,17 @@ helium_poll(struct helium_ctx * ctx,
 }
 
 int
-helium_channel_poll(struct helium_ctx * ctx,
-                    uint16_t            token,
-                    int8_t *            result,
-                    uint32_t            retries)
+helium_channel_poll_result(struct helium_ctx * ctx,
+                           uint16_t            token,
+                           int8_t *            result,
+                           uint32_t            retries)
 {
-    uint8_t * frame = ctx->buf;
-    size_t    used  = 2;
-    memcpy(frame, &token, sizeof(token));
-
-    enum helium_poll_status poll_status =
-        helium_poll(ctx, frame, HELIUM_MAX_DATA_SIZE, &used, retries);
-
-    if (poll_status == helium_poll_OK_DATA && result)
-    {
-        *result = frame[2];
-    }
-
-    return poll_status;
+    return helium_channel_poll_token(ctx,
+                                     token,
+                                     result,
+                                     sizeof(*result),
+                                     NULL,
+                                     retries);
 }
 
 #define CHANNEL_DATA 0x05
@@ -503,25 +544,9 @@ helium_channel_poll_data(struct helium_ctx * ctx,
                          size_t *            used,
                          uint32_t            retries)
 {
-    uint8_t * frame = ctx->buf;
-    *frame++        = CHANNEL_DATA;
-    *frame++        = channel_id;
-    *used           = 2;
-
-    int poll_status = helium_poll(ctx, ctx->buf, len, used, retries);
-    if (helium_poll_OK_DATA == poll_status)
-    {
-        size_t copylen = *used - 2;
-        if (copylen > len)
-        {
-            copylen = len;
-        }
-        memcpy(data, ctx->buf + 2, copylen);
-    }
-
-    return poll_status;
+    uint16_t token = _mk_token(CHANNEL_DATA, channel_id);
+    return helium_channel_poll_token(ctx, token, data, len, used, retries);
 }
-
 
 #define CHANNEL_CREATE 0x01
 #define CHANNEL_CREATE_RESULT 0x02
@@ -550,7 +575,7 @@ helium_channel_create(struct helium_ctx * ctx,
     case helium_send_OK:
         if (token)
         {
-            *token = (channel_ref << 8) |  CHANNEL_CREATE_RESULT;
+            *token = _mk_token(CHANNEL_CREATE_RESULT, channel_ref);
         }
         return helium_channel_create_OK;
     case helium_send_ERR_NOT_CONNECTED:
@@ -594,7 +619,7 @@ helium_channel_send(struct helium_ctx * ctx,
     case helium_send_OK:
         if (token)
         {
-            *token = (CHANNEL_CREATE_RESULT << 8) | channel_ref;
+            *token = _mk_token(CHANNEL_SEND_RESULT, channel_ref);
         }
         return helium_channel_send_OK;
     case helium_send_ERR_NOT_CONNECTED:

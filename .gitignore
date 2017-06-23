@@ -22,7 +22,6 @@
 *.dylib
 
 # Executables
-atom
 *.exe
 *.out
 *.app
@@ -33,4 +32,5 @@ atom
 # Debug files
 *.dSYM/
 *.su
+compile_commands.json
 TAGS
