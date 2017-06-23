@@ -167,19 +167,33 @@ send_command(struct helium_ctx * ctx)
         return send_command_ERR_ENCODE;
     }
 
+#ifdef HE_DEBUG_ATOM
+    printf("SEND: ");
+    for (unsigned int i = 0; i < ei.position; i++) {
+        printf("%d ", ctx->buf[i]);
+    }
+    printf("\n");
+#endif
+
     size_t len = _write_frame(ctx, ctx->buf, ei.position);
     if (len != ei.position)
     {
         return send_command_ERR_COMMUNICATION;
     }
 
-    memset(ctx->buf, 0xFE, sizeof(ctx->buf));
-
     len = _read_frame(ctx, ctx->buf, sizeof(ctx->buf));
     if ((int)len <= 0)
     {
         return send_command_ERR_COMMUNICATION;
     }
+
+#ifdef HE_DEBUG_ATOM
+    printf("RECV: ");
+    for (unsigned int i = 0; i < ei.position; i++) {
+        printf("%d ", ctx->buf[i]);
+    }
+    printf("\n");
+#endif
 
     struct caut_decode_iter di;
     caut_decode_iter_init(&di, ctx->buf, len);
