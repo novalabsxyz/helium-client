@@ -1,6 +1,6 @@
 /*
  * Copyright 2017, Helium Systems, Inc.
- * All Rights Reserved. See LICENCE.txt for license information
+ * All Rights Reserved. See LICENSE.txt for license information
  */
 
 #ifndef HELIUM_ERROR_H
