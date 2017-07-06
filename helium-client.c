@@ -8,8 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-
-#define SOF_CHAR (0x7E) ///< Start-of-frame character.
+#define SOF_CHAR (0x7E)
 
 enum decode_state
 {
@@ -169,7 +168,8 @@ send_command(struct helium_ctx * ctx)
 
 #ifdef HE_DEBUG_ATOM
     printf("SEND: ");
-    for (unsigned int i = 0; i < ei.position; i++) {
+    for (unsigned int i = 0; i < ei.position; i++)
+    {
         printf("%d ", ctx->buf[i]);
     }
     printf("\n");
@@ -179,8 +179,8 @@ send_command(struct helium_ctx * ctx)
     if (len != ei.position)
     {
         return send_command_ERR_COMMUNICATION;
-    }
 
+    }
     len = _read_frame(ctx, ctx->buf, sizeof(ctx->buf));
     if ((int)len <= 0)
     {
@@ -189,7 +189,8 @@ send_command(struct helium_ctx * ctx)
 
 #ifdef HE_DEBUG_ATOM
     printf("RECV: ");
-    for (unsigned int i = 0; i < ei.position; i++) {
+    for (unsigned int i = 0; i < len; i++)
+    {
         printf("%d ", ctx->buf[i]);
     }
     printf("\n");
