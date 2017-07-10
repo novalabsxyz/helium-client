@@ -179,7 +179,6 @@ send_command(struct helium_ctx * ctx)
     if (len != ei.position)
     {
         return send_command_ERR_COMMUNICATION;
-
     }
     len = _read_frame(ctx, ctx->buf, sizeof(ctx->buf));
     if ((int)len <= 0)
@@ -377,6 +376,26 @@ helium_sleep(struct helium_ctx * ctx, struct connection * connection)
         return helium_sleep_OK;
     }
     return helium_sleep_ERR_COMMUNICATION;
+}
+
+int
+helium_reset(struct helium_ctx * ctx)
+{
+    ctx->txn.cmd._tag  = cmd_tag_reset;
+    ctx->txn.cmd.reset = cmd_reset_req;
+
+    enum send_command_status status = send_command(ctx);
+    if (send_command_OK != status)
+    {
+        return helium_reset_ERR_COMMUNICATION;
+    }
+
+    if (ctx->txn.cmd.reset == cmd_reset_res)
+    {
+        return helium_reset_OK;
+    }
+
+    return helium_reset_ERR_COMMUNICATION;
 }
 
 

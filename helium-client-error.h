@@ -44,6 +44,12 @@ enum helium_sleep_status
     helium_sleep_ERR_COMMUNICATION = helium_status_ERR_COMMUNICATION,
 };
 
+enum helium_reset_status
+{
+    helium_reset_OK                = helium_status_OK,
+    helium_reset_ERR_COMMUNICATION = helium_status_ERR_COMMUNICATION,
+};
+
 enum helium_poll_status
 {
     helium_poll_OK_DATA           = helium_status_OK,

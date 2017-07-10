@@ -74,6 +74,8 @@ helium_connect(struct helium_ctx * ctx,
 int
 helium_sleep(struct helium_ctx * ctx, struct connection * connection);
 
+int
+helium_reset(struct helium_ctx * ctx);
 
 int
 helium_poll(struct helium_ctx * ctx, void * data, const size_t len, size_t * used);
