@@ -7,6 +7,7 @@
 #define HELIUM_CLIENT_H
 
 #include "cauterize/atom_api.h"
+#include "cauterize/config_api.h"
 #include "helium-client-error.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -111,6 +112,53 @@ helium_channel_send(struct helium_ctx * ctx,
                     size_t              len,
                     uint16_t *          token);
 
+//
+// Channel Configuration
+//
+
+enum helium_config_type
+{
+    helium_config_i32,
+    helium_config_f32,
+    helium_config_str,
+    helium_config_bool,
+    helium_config_null,
+};
+
+enum helium_config_cmd
+{
+    helium_config_get,
+    helium_config_set,
+};
+
+typedef int (*helium_channel_config_handler)(const char *            key,
+                                             enum helium_config_type value_type,
+                                             void *                  value);
+
+int
+helium_channel_config_poll(struct helium_ctx *           ctx,
+                           uint8_t                       channel_id,
+                           helium_channel_config_handler handler,
+                           uint32_t                      retries);
+
+int
+helium_channel_config_poll_result(struct helium_ctx * ctx,
+                                  uint16_t            token,
+                                  int8_t *            result,
+                                  uint32_t            retries);
+
+int
+helium_channel_config_get(struct helium_ctx * ctx,
+                          uint8_t             channel_id,
+                          const char *        config_key);
+
+int
+helium_channel_config_set(struct helium_ctx *     ctx,
+                          uint8_t                 channel_id,
+                          const char *            config_key,
+                          enum helium_config_type value_type,
+                          void *                  value,
+                          uint16_t *              token);
 
 //
 // Externally required functions

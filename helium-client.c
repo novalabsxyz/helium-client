@@ -672,3 +672,234 @@ helium_channel_send(struct helium_ctx * ctx,
 
     return helium_channel_send_ERR_COMMUNICATION;
 }
+
+
+//
+// Channel Configuration
+//
+
+static __inline void
+_encode_config_key(struct key * dest, const char * str)
+{
+    dest->_length = strlen(str);
+    if (dest->_length > VECTOR_MAX_LEN_key)
+    {
+        dest->_length = VECTOR_MAX_LEN_key;
+    }
+    memcpy(dest->elems, str, dest->_length);
+}
+
+static __inline void
+_decode_config_key(struct key * key, char * dest)
+{
+    memcpy(dest, key->elems, key->_length);
+    dest[key->_length] = '\0';
+}
+
+
+static __inline void
+_decode_config_value(struct value *            value,
+                     enum helium_config_type * value_type,
+                     char *                    dest)
+{
+    switch (value->_tag)
+    {
+    case value_tag_b:
+        *value_type = helium_config_bool;
+        memcpy(dest, &value->b, sizeof(bool));
+        break;
+    case value_tag_i:
+        *value_type = helium_config_i32;
+        memcpy(dest, &value->i, sizeof(int32_t));
+        break;
+    case value_tag_f:
+        *value_type = helium_config_f32;
+        memcpy(dest, &value->f, sizeof(float));
+        break;
+    case value_tag_s:
+        *value_type = helium_config_str;
+        memcpy(dest, value->s.elems, value->s._length);
+        dest[value->s._length] = '\0';
+        break;
+    case value_tag_n:
+        *value_type = helium_config_null;
+        break;
+    }
+}
+
+static __inline void
+_encode_config_value(struct value *          dest,
+                     enum helium_config_type value_type,
+                     void *                  value)
+{
+    switch (value_type)
+    {
+    case helium_config_bool:
+        dest->_tag = value_tag_b;
+        dest->b    = *(bool *)value;
+        break;
+    case helium_config_i32:
+        dest->_tag = value_tag_i;
+        dest->i    = *(int32_t *)value;
+        break;
+    case helium_config_f32:
+        dest->_tag = value_tag_f;
+        dest->f    = *(float *)value;
+        break;
+    case helium_config_str:
+        dest->_tag      = value_tag_s;
+        dest->s._length = strlen((char *)value);
+        if (dest->s._length > VECTOR_MAX_LEN_string)
+        {
+            dest->s._length = VECTOR_MAX_LEN_string;
+        }
+        memcpy(dest->s.elems, value, dest->s._length);
+        break;
+    case helium_config_null:
+        dest->_tag = value_tag_n;
+        break;
+    }
+}
+
+
+static __inline uint8_t
+_mk_channel_config_id(uint8_t channel_ref)
+{
+    return channel_ref | 1 << 7;
+}
+
+
+int
+helium_channel_config_poll_result(struct helium_ctx * ctx,
+                                  uint16_t            token,
+                                  int8_t *            result,
+                                  uint32_t            retries)
+{
+    return helium_channel_poll_result(ctx, token, result, retries);
+}
+
+
+int
+helium_channel_config_poll_data(struct helium_ctx * ctx,
+                                uint8_t             channel_id,
+                                void *              data,
+                                size_t              len,
+                                size_t *            used,
+                                uint32_t            retries)
+{
+    channel_id = _mk_channel_config_id(channel_id);
+    return helium_channel_poll_data(ctx, channel_id, data, len, used, retries);
+}
+
+int
+helium_channel_config_poll(struct helium_ctx *           ctx,
+                           uint8_t                       channel_id,
+                           helium_channel_config_handler handler,
+                           uint32_t                      retries)
+{
+    char data[HELIUM_MAX_DATA_SIZE];
+
+    size_t used;
+
+    channel_id = _mk_channel_config_id(channel_id);
+    int status =
+        helium_channel_poll_data(ctx, channel_id, data, sizeof(data), &used, retries);
+    if (status != helium_status_OK)
+    {
+        return status;
+    }
+
+    struct cmd_config       cmd;
+    struct caut_decode_iter di;
+    caut_decode_iter_init(&di, data, used);
+
+    enum caut_status caut_status = decode_cmd_config(&di, &cmd);
+    if (caut_status_ok != caut_status)
+    {
+        return helium_status_ERR_CODING;
+    }
+
+    if (cmd._tag != cmd_config_tag_get || cmd.get._tag != cmd_config_get_tag_res)
+    {
+        return helium_status_ERR_CODING;
+    }
+
+    struct arr_assoc * arr_assoc = &cmd.get.res;
+
+    for (int i = 0; i < arr_assoc->_length; i++)
+    {
+        struct assoc * assoc = &arr_assoc->elems[i];
+
+        char key[VECTOR_MAX_LEN_key + 1];
+        _decode_config_key(&assoc->k, key);
+
+        enum helium_config_type value_type;
+        _decode_config_value(&assoc->v, &value_type, data);
+
+        status = handler(key,
+                         value_type,
+                         value_type == helium_config_null ? NULL : data);
+
+        if (helium_status_OK != status)
+        {
+            return status;
+        }
+    }
+    return helium_status_OK;
+}
+
+
+int
+helium_channel_config_get(struct helium_ctx * ctx,
+                          uint8_t             channel_id,
+                          const char *        config_key)
+{
+    channel_id = _mk_channel_config_id(channel_id);
+
+    struct cmd_config cmd;
+    cmd._tag     = cmd_config_tag_get;
+    cmd.get._tag = cmd_config_get_tag_req;
+
+    struct arr_key * keys = &cmd.get.req;
+    keys->_length         = 1;
+    _encode_config_key(&keys->elems[0], config_key);
+
+    char                    data[HELIUM_MAX_DATA_SIZE];
+    struct caut_encode_iter ei;
+    caut_encode_iter_init(&ei, data, sizeof(data));
+    if (caut_status_ok != encode_cmd_config(&ei, &cmd))
+    {
+        return helium_status_ERR_CODING;
+    }
+
+    return helium_channel_send(ctx, channel_id, data, ei.position, NULL);
+}
+
+int
+helium_channel_config_set(struct helium_ctx *     ctx,
+                          uint8_t                 channel_id,
+                          const char *            config_key,
+                          enum helium_config_type value_type,
+                          void *                  value,
+                          uint16_t *              token)
+{
+    channel_id = _mk_channel_config_id(channel_id);
+
+    struct cmd_config cmd;
+    cmd._tag            = cmd_config_tag_set;
+    cmd.set._tag        = cmd_config_set_tag_req;
+    cmd.set.req._length = 1;
+
+    _encode_config_key(&cmd.set.req.elems[0].k, config_key);
+    _encode_config_value(&cmd.set.req.elems[0].v, value_type, value);
+
+    char                    data[HELIUM_MAX_DATA_SIZE];
+    struct caut_encode_iter ei;
+    caut_encode_iter_init(&ei, data, sizeof(data));
+    if (caut_status_ok != encode_cmd_config(&ei, &cmd))
+    {
+        return helium_status_ERR_CODING;
+    }
+
+    return helium_channel_send(ctx, channel_id, data, ei.position, token);
+}
