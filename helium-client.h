@@ -133,12 +133,6 @@ enum helium_config_type
     helium_config_null,
 };
 
-enum helium_config_cmd
-{
-    helium_config_get,
-    helium_config_set,
-};
-
 int
 helium_channel_config_get(struct helium_ctx * ctx,
                           uint8_t             channel_id,
