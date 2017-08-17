@@ -914,7 +914,7 @@ helium_channel_config_set_poll_result(struct helium_ctx * ctx,
         return status;
     }
 
-    if (cmd._tag != cmd_config_tag_set || cmd.get._tag != cmd_config_set_tag_res)
+    if (cmd._tag != cmd_config_tag_set || cmd.set._tag != cmd_config_set_tag_res)
     {
         return helium_status_ERR_CODING;
     }
