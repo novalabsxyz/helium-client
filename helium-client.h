@@ -94,6 +94,14 @@ helium_channel_poll_data(struct helium_ctx * ctx,
                          uint32_t            retries);
 
 int
+helium_channel_poll_token(struct helium_ctx * ctx,
+                          uint16_t            token,
+                          void *              data,
+                          size_t              len,
+                          size_t *            used,
+                          uint32_t            retries);
+
+int
 helium_channel_poll_result(struct helium_ctx * ctx,
                            uint16_t            token,
                            int8_t *            result,
@@ -131,26 +139,22 @@ enum helium_config_cmd
     helium_config_set,
 };
 
+int
+helium_channel_config_get(struct helium_ctx * ctx,
+                          uint8_t             channel_id,
+                          const char *        config_key,
+                          uint16_t *          token);
+
 typedef int (*helium_channel_config_handler)(const char *            key,
                                              enum helium_config_type value_type,
                                              void *                  value);
 
 int
-helium_channel_config_poll(struct helium_ctx *           ctx,
-                           uint8_t                       channel_id,
-                           helium_channel_config_handler handler,
-                           uint32_t                      retries);
+helium_channel_config_get_poll_result(struct helium_ctx *           ctx,
+                                      uint16_t                      token,
+                                      helium_channel_config_handler handler,
+                                      uint32_t                      retries);
 
-int
-helium_channel_config_poll_result(struct helium_ctx * ctx,
-                                  uint16_t            token,
-                                  int8_t *            result,
-                                  uint32_t            retries);
-
-int
-helium_channel_config_get(struct helium_ctx * ctx,
-                          uint8_t             channel_id,
-                          const char *        config_key);
 
 int
 helium_channel_config_set(struct helium_ctx *     ctx,
@@ -159,6 +163,13 @@ helium_channel_config_set(struct helium_ctx *     ctx,
                           enum helium_config_type value_type,
                           void *                  value,
                           uint16_t *              token);
+
+int
+helium_channel_config_set_poll_result(struct helium_ctx * ctx,
+                                      uint16_t            token,
+                                      int8_t *            result,
+                                      uint32_t            retries);
+
 
 //
 // Externally required functions

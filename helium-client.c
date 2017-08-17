@@ -209,6 +209,7 @@ void
 helium_init(struct helium_ctx * ctx, void * param)
 {
     memset(ctx, 0, sizeof(*ctx));
+    ctx->channel_ref = rand() % 255 + 1;
     if (NULL != param)
     {
         ctx->param = param;
@@ -507,7 +508,7 @@ _token_frame_ref(uint16_t token)
     return token >> 8 & 0xFF;
 }
 
-static int
+int
 helium_channel_poll_token(struct helium_ctx * ctx,
                           uint16_t            token,
                           void *              data,
@@ -770,53 +771,72 @@ _mk_channel_config_id(uint8_t channel_ref)
 
 
 int
-helium_channel_config_poll_result(struct helium_ctx * ctx,
-                                  uint16_t            token,
-                                  int8_t *            result,
-                                  uint32_t            retries)
-{
-    return helium_channel_poll_result(ctx, token, result, retries);
-}
-
-
-int
-helium_channel_config_poll_data(struct helium_ctx * ctx,
-                                uint8_t             channel_id,
-                                void *              data,
-                                size_t              len,
-                                size_t *            used,
-                                uint32_t            retries)
+helium_channel_config_get(struct helium_ctx * ctx,
+                          uint8_t             channel_id,
+                          const char *        config_key,
+                          uint16_t *          token)
 {
     channel_id = _mk_channel_config_id(channel_id);
-    return helium_channel_poll_data(ctx, channel_id, data, len, used, retries);
+
+    struct cmd_config cmd;
+    cmd._tag     = cmd_config_tag_get;
+    cmd.get._tag = cmd_config_get_tag_req;
+
+    struct arr_key * keys = &cmd.get.req;
+    keys->_length         = 1;
+    _encode_config_key(&keys->elems[0], config_key);
+
+    char                    data[HELIUM_MAX_DATA_SIZE];
+    struct caut_encode_iter ei;
+    caut_encode_iter_init(&ei, data, sizeof(data));
+    if (caut_status_ok != encode_cmd_config(&ei, &cmd))
+    {
+        return helium_status_ERR_CODING;
+    }
+
+    return helium_channel_send(ctx, channel_id, data, ei.position, token);
 }
 
-int
-helium_channel_config_poll(struct helium_ctx *           ctx,
-                           uint8_t                       channel_id,
-                           helium_channel_config_handler handler,
-                           uint32_t                      retries)
-{
-    char data[HELIUM_MAX_DATA_SIZE];
 
+static __inline int
+_channel_config_poll_cmd(struct helium_ctx * ctx,
+                         uint16_t            token,
+                         char *              data,
+                         size_t              len,
+                         struct cmd_config * cmd,
+                         uint32_t            retries)
+{
     size_t used;
-
-    channel_id = _mk_channel_config_id(channel_id);
-    int status =
-        helium_channel_poll_data(ctx, channel_id, data, sizeof(data), &used, retries);
+    int    status =
+        helium_channel_poll_token(ctx, token, data, len, &used, retries);
     if (status != helium_status_OK)
     {
         return status;
     }
 
-    struct cmd_config       cmd;
     struct caut_decode_iter di;
     caut_decode_iter_init(&di, data, used);
-
-    enum caut_status caut_status = decode_cmd_config(&di, &cmd);
+    enum caut_status caut_status = decode_cmd_config(&di, cmd);
     if (caut_status_ok != caut_status)
     {
         return helium_status_ERR_CODING;
+    }
+
+    return helium_status_OK;
+}
+
+int
+helium_channel_config_get_poll_result(struct helium_ctx *           ctx,
+                                      uint16_t                      token,
+                                      helium_channel_config_handler handler,
+                                      uint32_t                      retries)
+{
+    struct cmd_config cmd;
+    char              data[HELIUM_MAX_DATA_SIZE];
+    int status = _channel_config_poll_cmd(ctx, token, data, sizeof(data), &cmd, retries);
+    if (helium_status_OK != status)
+    {
+        return status;
     }
 
     if (cmd._tag != cmd_config_tag_get || cmd.get._tag != cmd_config_get_tag_res)
@@ -849,31 +869,6 @@ helium_channel_config_poll(struct helium_ctx *           ctx,
 }
 
 
-int
-helium_channel_config_get(struct helium_ctx * ctx,
-                          uint8_t             channel_id,
-                          const char *        config_key)
-{
-    channel_id = _mk_channel_config_id(channel_id);
-
-    struct cmd_config cmd;
-    cmd._tag     = cmd_config_tag_get;
-    cmd.get._tag = cmd_config_get_tag_req;
-
-    struct arr_key * keys = &cmd.get.req;
-    keys->_length         = 1;
-    _encode_config_key(&keys->elems[0], config_key);
-
-    char                    data[HELIUM_MAX_DATA_SIZE];
-    struct caut_encode_iter ei;
-    caut_encode_iter_init(&ei, data, sizeof(data));
-    if (caut_status_ok != encode_cmd_config(&ei, &cmd))
-    {
-        return helium_status_ERR_CODING;
-    }
-
-    return helium_channel_send(ctx, channel_id, data, ei.position, NULL);
-}
 
 int
 helium_channel_config_set(struct helium_ctx *     ctx,
@@ -902,4 +897,32 @@ helium_channel_config_set(struct helium_ctx *     ctx,
     }
 
     return helium_channel_send(ctx, channel_id, data, ei.position, token);
+}
+
+
+int
+helium_channel_config_set_poll_result(struct helium_ctx * ctx,
+                                      uint16_t            token,
+                                      int8_t *            result,
+                                      uint32_t            retries)
+{
+    struct cmd_config cmd;
+    char              data[HELIUM_MAX_DATA_SIZE];
+    int status = _channel_config_poll_cmd(ctx, token, data, sizeof(data), &cmd, retries);
+    if (helium_status_OK != status)
+    {
+        return status;
+    }
+
+    if (cmd._tag != cmd_config_tag_set || cmd.get._tag != cmd_config_set_tag_res)
+    {
+        return helium_status_ERR_CODING;
+    }
+
+    if (result)
+    {
+        *result = cmd.set.res;
+    }
+
+    return helium_status_OK;
 }
