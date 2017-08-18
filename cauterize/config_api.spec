@@ -1,6 +1,6 @@
 (name "config_api")
 (version "1.0.0")
-(fingerprint 95daae5042fabe9a4a0efde8b9b6bf892c7c2eec)
+(fingerprint 820c22dbdfaf528609a7d4b43323b4807ad8fb8f)
 (size 1 553)
 (depth 7)
 (typelength 2)
@@ -80,8 +80,8 @@
 (type 
   cmd_config
   union
-  (fingerprint 0f562950f25b5dd6418d8646fed13f9b9cefae94)
-  (size 3 553)
+  (fingerprint d8b08141cbf2823d829045a36119d7536def6ab7)
+  (size 1 553)
   (depth 7)
   t1
-  (fields (field get 0 cmd_config_get) (field set 1 cmd_config_set)))
+  (fields (field get 0 cmd_config_get) (field set 1 cmd_config_set) (empty invalidate 2)))

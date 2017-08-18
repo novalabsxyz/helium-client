@@ -807,8 +807,7 @@ _channel_config_poll_cmd(struct helium_ctx * ctx,
                          uint32_t            retries)
 {
     size_t used;
-    int    status =
-        helium_channel_poll_token(ctx, token, data, len, &used, retries);
+    int status = helium_channel_poll_token(ctx, token, data, len, &used, retries);
     if (status != helium_status_OK)
     {
         return status;
@@ -825,6 +824,35 @@ _channel_config_poll_cmd(struct helium_ctx * ctx,
     return helium_status_OK;
 }
 
+static __inline int
+_channel_config_poll_data(struct helium_ctx * ctx,
+                          uint8_t             channel_id,
+                          char *              data,
+                          size_t              len,
+                          struct cmd_config * cmd,
+                          uint32_t            retries)
+{
+    channel_id = _mk_channel_config_id(channel_id);
+    size_t used;
+    int    status =
+        helium_channel_poll_data(ctx, channel_id, data, len, &used, retries);
+    if (status != helium_status_OK)
+    {
+        return status;
+    }
+
+    struct caut_decode_iter di;
+    caut_decode_iter_init(&di, data, used);
+    enum caut_status caut_status = decode_cmd_config(&di, cmd);
+    if (caut_status_ok != caut_status)
+    {
+        return helium_status_ERR_CODING;
+    }
+
+    return helium_status_OK;
+}
+
+
 int
 helium_channel_config_get_poll_result(struct helium_ctx *           ctx,
                                       uint16_t                      token,
@@ -833,7 +861,8 @@ helium_channel_config_get_poll_result(struct helium_ctx *           ctx,
 {
     struct cmd_config cmd;
     char              data[HELIUM_MAX_DATA_SIZE];
-    int status = _channel_config_poll_cmd(ctx, token, data, sizeof(data), &cmd, retries);
+    int               status =
+        _channel_config_poll_cmd(ctx, token, data, sizeof(data), &cmd, retries);
     if (helium_status_OK != status)
     {
         return status;
@@ -908,7 +937,8 @@ helium_channel_config_set_poll_result(struct helium_ctx * ctx,
 {
     struct cmd_config cmd;
     char              data[HELIUM_MAX_DATA_SIZE];
-    int status = _channel_config_poll_cmd(ctx, token, data, sizeof(data), &cmd, retries);
+    int               status =
+        _channel_config_poll_cmd(ctx, token, data, sizeof(data), &cmd, retries);
     if (helium_status_OK != status)
     {
         return status;
@@ -922,6 +952,35 @@ helium_channel_config_set_poll_result(struct helium_ctx * ctx,
     if (result)
     {
         *result = cmd.set.res;
+    }
+
+    return helium_status_OK;
+}
+
+
+int
+helium_channel_config_poll_invalidate(struct helium_ctx * ctx,
+                                      uint8_t             channel_id,
+                                      bool *              result,
+                                      uint32_t            retries)
+{
+    struct cmd_config cmd;
+    char              data[HELIUM_MAX_DATA_SIZE];
+    int               status =
+        _channel_config_poll_data(ctx, channel_id, data, sizeof(data), &cmd, retries);
+    if (helium_status_OK != status)
+    {
+        return status;
+    }
+
+    if (cmd._tag != cmd_config_tag_invalidate)
+    {
+        return helium_status_ERR_CODING;
+    }
+
+    if (result)
+    {
+        *result = true;
     }
 
     return helium_status_OK;

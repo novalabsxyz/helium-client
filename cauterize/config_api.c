@@ -6,7 +6,7 @@
 #define FSET(FS,IX) ((FS) & (1ull << (IX)))
 
 /* schema hash */
-hashtype_t const SCHEMA_HASH_config_api = { 0x95,0xDA,0xAE,0x50,0x42,0xFA,0xBE,0x9A,0x4A,0x0E,0xFD,0xE8,0xB9,0xB6,0xBF,0x89,0x2C,0x7C,0x2E,0xEC };
+hashtype_t const SCHEMA_HASH_config_api = { 0x82,0x0C,0x22,0xDB,0xDF,0xAF,0x52,0x86,0x09,0xA7,0xD4,0xB4,0x33,0x23,0xB4,0x80,0x7A,0xD8,0xFB,0x8F };
 
 /* type encoders */
 R encode_string(EI * const _c_iter, struct string const * const _c_obj) {
@@ -138,6 +138,7 @@ R encode_cmd_config(EI * const _c_iter, struct cmd_config const * const _c_obj) 
   switch(_c_obj->_tag) {
   case cmd_config_tag_get: STATUS_CHECK(encode_cmd_config_get(_c_iter, &_c_obj->get)); break;
   case cmd_config_tag_set: STATUS_CHECK(encode_cmd_config_set(_c_iter, &_c_obj->set)); break;
+  case cmd_config_tag_invalidate: /* No data for field invalidate with index 2. */ break;
   }
 
   return caut_status_ok;
@@ -279,6 +280,7 @@ R decode_cmd_config(DI * const _c_iter, struct cmd_config * const _c_obj) {
   switch(_c_obj->_tag) {
   case cmd_config_tag_get: STATUS_CHECK(decode_cmd_config_get(_c_iter, &_c_obj->get)); break;
   case cmd_config_tag_set: STATUS_CHECK(decode_cmd_config_set(_c_iter, &_c_obj->set)); break;
+  case cmd_config_tag_invalidate: /* No data for field i"invalidate" with index 2. */ break;
   }
 
   return caut_status_ok;
@@ -464,6 +466,9 @@ enum caut_ord compare_cmd_config(struct cmd_config const * const _c_a, struct cm
     break;
   case cmd_config_tag_set:
     _c_o = compare_cmd_config_set(&_c_a->set, &_c_b->set);
+    break;
+  case cmd_config_tag_invalidate:
+    _c_o = caut_ord_eq; /* No comparison for empty field invalidate */
     break;
   }
 

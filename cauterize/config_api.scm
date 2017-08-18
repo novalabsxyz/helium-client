@@ -23,7 +23,8 @@
 (type cmd_config union
       (fields
        (field get cmd_config_get)
-       (field set cmd_config_set) ))
+       (field set cmd_config_set)
+       (empty invalidate ) ))
 
 (type cmd_config_get union
       (fields

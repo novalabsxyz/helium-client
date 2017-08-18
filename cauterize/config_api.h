@@ -107,17 +107,19 @@ struct cmd_config_set {
 
 };
 
-#define UNION_NUM_FIELDS_cmd_config (0x2ull)
+#define UNION_NUM_FIELDS_cmd_config (0x3ull)
 struct cmd_config {
   enum cmd_config_tag {
     cmd_config_tag_get = 0,
     cmd_config_tag_set = 1,
+    cmd_config_tag_invalidate = 2,
   } _tag;
 
 
   union {
     struct cmd_config_get get;
     struct cmd_config_set set;
+    /* no data for field i"invalidate" with index 2 */
   };
 
 };

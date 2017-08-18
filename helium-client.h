@@ -164,13 +164,17 @@ helium_channel_config_set_poll_result(struct helium_ctx * ctx,
                                       int8_t *            result,
                                       uint32_t            retries);
 
+int
+helium_channel_config_poll_invalidate(struct helium_ctx * ctx,
+                                      uint8_t             channel_id,
+                                      bool *              result,
+                                      uint32_t            retries);
 
-//
-// Externally required functions
-//
+    //
+    // Externally required functions
+    //
 
-extern bool
-helium_serial_readable(void * param);
+    extern bool helium_serial_readable(void * param);
 extern bool
 helium_serial_getc(void * param, uint8_t * ch);
 extern bool
