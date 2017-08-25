@@ -139,14 +139,16 @@ helium_channel_config_get(struct helium_ctx * ctx,
                           const char *        config_key,
                           uint16_t *          token);
 
-typedef int (*helium_channel_config_handler)(const char *            key,
-                                             enum helium_config_type value_type,
-                                             void *                  value);
+typedef bool (*helium_channel_config_handler)(void *       handler_ctx,
+                                              const char * key,
+                                              enum helium_config_type value_type,
+                                              void *                  value);
 
 int
 helium_channel_config_get_poll_result(struct helium_ctx *           ctx,
                                       uint16_t                      token,
                                       helium_channel_config_handler handler,
+                                      void *                        handler_ctx,
                                       uint32_t                      retries);
 
 
@@ -170,11 +172,12 @@ helium_channel_config_poll_invalidate(struct helium_ctx * ctx,
                                       bool *              result,
                                       uint32_t            retries);
 
-    //
-    // Externally required functions
-    //
+//
+// Externally required functions
+//
 
-    extern bool helium_serial_readable(void * param);
+extern bool
+helium_serial_readable(void * param);
 extern bool
 helium_serial_getc(void * param, uint8_t * ch);
 extern bool

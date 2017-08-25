@@ -582,7 +582,7 @@ helium_channel_poll_data(struct helium_ctx * ctx,
     uint16_t                token = _mk_token(CHANNEL_DATA, channel_id);
     enum helium_poll_status status =
         helium_channel_poll_token(ctx, token, data, len, used, 0);
-    if (helium_poll_OK_NO_DATA == status)
+    if (helium_poll_OK_NO_DATA == status && retries > 0)
     {
         helium_channel_send(ctx, 0, NULL, 0, NULL);
     }
@@ -857,6 +857,7 @@ int
 helium_channel_config_get_poll_result(struct helium_ctx *           ctx,
                                       uint16_t                      token,
                                       helium_channel_config_handler handler,
+                                      void *                        handler_ctx,
                                       uint32_t                      retries)
 {
     struct cmd_config cmd;
@@ -885,13 +886,9 @@ helium_channel_config_get_poll_result(struct helium_ctx *           ctx,
         enum helium_config_type value_type;
         _decode_config_value(&assoc->v, &value_type, data);
 
-        status = handler(key,
-                         value_type,
-                         value_type == helium_config_null ? NULL : data);
-
-        if (helium_status_OK != status)
+        if (!handler(handler_ctx, key, value_type, data))
         {
-            return status;
+            break;
         }
     }
     return helium_status_OK;
