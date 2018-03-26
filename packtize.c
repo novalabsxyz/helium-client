@@ -10,7 +10,7 @@ send_message(struct helium_channel * channel,
             uint16_t *              token,
             uint8_t                 position)
 {
-    float seg_count = (m_size-position)/HELIUM_MAX_DATA_SIZE;
+    int seg_count = (m_size-position)/HELIUM_MAX_DATA_SIZE;
     
     if(seg_count >= 0 && position < m_size){
         char segment[100];
