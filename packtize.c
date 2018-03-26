@@ -14,13 +14,15 @@ send_message(struct helium_channel * channel,
     
     if(seg_count >= 0 && position < m_size){
         char segment[100];
-        for (int i = 0; i<HELIUM_MAX_DATA_SIZE; i++)
+        for (int i = 1; i<HELIUM_MAX_DATA_SIZE; i++)
         {
             if(position < m_size){
                 segment[i] = data[position];
                 position++;
             }
         }
+        segment[0] = seg_count; //the segments count backwards... 
+ 
         int status = helium_channel_send(channel, segment, HELIUM_MAX_DATA_SIZE, token);
         if(helium_status_OK == status){
             send_message(channel, data, m_size, token, position);
