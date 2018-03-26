@@ -15,7 +15,7 @@ send_message(struct helium_channel * channel,
     
     if(seg_count >= 0 && position < m_size){
         char segment[100];
-        for (int i = 1; i<HELIUM_MAX_DATA_SIZE-1; i++)
+        for (int i = 1; i<HELIUM_MAX_DATA_SIZE; i++)
         {
             if(position < m_size){
                 segment[i] = data[position];
