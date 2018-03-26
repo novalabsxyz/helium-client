@@ -8,27 +8,29 @@ send_message(struct helium_channel * channel,
             const char *            data,
             size_t                  m_size,
             uint16_t *              token,
-            uint8_t                 position)
+            uint8_t                 position,
+            uint8_t                 order)
 {
     int seg_count = (m_size-position)/HELIUM_MAX_DATA_SIZE;
     
     if(seg_count >= 0 && position < m_size){
         char segment[100];
-        for (int i = 1; i<HELIUM_MAX_DATA_SIZE; i++)
+        for (int i = 1; i<HELIUM_MAX_DATA_SIZE-1; i++)
         {
             if(position < m_size){
                 segment[i] = data[position];
                 position++;
             }
         }
-        segment[0] = seg_count; //the segments count backwards... 
+        segment[0] = order; 
  
         int status = helium_channel_send(channel, segment, HELIUM_MAX_DATA_SIZE, token);
         if(helium_status_OK == status){
-            send_message(channel, data, m_size, token, position);
+            order++;
+            send_message(channel, data, m_size, token, position, order);
         }
         else{
-            send_message(channel, data, m_size, token, 0);
+            send_message(channel, data, m_size, token, 0, 0);
         }
     }
     else{
